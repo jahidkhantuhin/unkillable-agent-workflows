@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Step 1 provides the TypeScript monorepo, Express health endpoint, BullMQ logging worker, Next.js dashboard shell, local infrastructure, and CI. Workflow execution, authentication, approvals, and chaos controls are future steps. No reliability numbers are claimed yet.
+Steps 1–2 provide the monorepo foundation, live infrastructure health, domain schemas/indexes, MongoDB-backed email/password authentication, and role-based access. Login/register and protected workspace pages work; workflow execution, approval actions, and chaos controls arrive in later steps. No reliability numbers are claimed yet.
 
 ## Quickstart
 
@@ -14,8 +14,11 @@ Install Node.js 24 or newer, pnpm 12.16.1, and Docker with Compose. From the rep
 
 ```powershell
 Copy-Item .env.example .env
+# Replace BETTER_AUTH_SECRET with the output of:
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 pnpm install
 docker compose up -d
+pnpm seed
 pnpm dev
 ```
 
@@ -23,17 +26,47 @@ Open http://localhost:3000. The API badge turns green when MongoDB and Redis are
 
 MongoDB runs as a single-node replica set. The one-shot initializer safely initiates `rs0` on a fresh volume. Host applications use `directConnection=true` because the replica set advertises the internal Compose hostname `mongo`. Services bind only to local loopback ports. This setup is for local development.
 
-The checked-in environment example defines `NODE_ENV`, `API_PORT`, `CORS_ORIGINS` (comma-separated allowlist), `MONGODB_URI`, `REDIS_URL`, `LOG_LEVEL`, and `NEXT_PUBLIC_API_URL`. API and worker load the root `.env`; the web health proxy defaults to port 4000. For a custom API URL, set `NEXT_PUBLIC_API_URL` in `apps/web/.env.local` too. No model, payment, SMTP, or Telegram credentials are needed in Step 1.
+API and worker load the root `.env`. Existing Step 1 installations must add `BETTER_AUTH_SECRET` (a private random value, at least 32 characters) and `BETTER_AUTH_URL=http://localhost:4000`. Keep `CORS_ORIGINS=http://localhost:3000`; auth mutations require an allowed `Origin` header. No model, payment, SMTP, or Telegram credentials are needed.
+
+For a custom API address, set `API_INTERNAL_URL` in `apps/web/.env.local` and update `NEXT_PUBLIC_API_URL` there for the health proxy. Both default to `http://localhost:4000`. The signing secret belongs only in the API environment; never expose it through a `NEXT_PUBLIC_` variable.
+
+## Authentication and roles (Step 2)
+
+Register at `/register`; accounts start as viewers. Registration accepts name, email, and a password of 12–128 characters; callers cannot supply a role. The seed command creates the local administrator using `SEED_EMAIL`, `SEED_PASSWORD`, `SEED_NAME`, and `SEED_ROLE` from `.env`. Example defaults are **local demo credentials only**: `admin@example.test` / `local-demo-password-change-me`. Set your own values before seeding if preferred. Re-running seed preserves existing passwords and applies the configured role; seeding is disabled in production.
+
+| Role     | Workspace access                                                            |
+| -------- | --------------------------------------------------------------------------- |
+| viewer   | Runs and Workflows                                                          |
+| approver | Viewer access plus Approvals; permission to resolve future approval actions |
+| admin    | All sections, including Chaos and Analytics                                 |
+
+Step 2 controls access to these sections; it does not implement their later workflow actions. Navigation hides unauthorized sections, protected pages recheck the session on the server, and API permission checks read the current membership on every request. Role changes do not require re-login; the navigation refreshes on window focus. Missing memberships fail closed. This is one local workspace (`workspaceId=local`), not a multi-tenant implementation.
+
+API endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, and `GET /auth/access/:section` (a permission check, not workflow execution). Browser requests use the same-origin `/api/backend/auth/*` proxy, which forwards HTTP-only cookies. API responses do not expose session tokens. Better Auth 1.7.23 hashes passwords and stores sessions in MongoDB. Sessions have a fixed seven-day lifetime, no cookie cache, and server-side revocation on logout; production cookies are Secure, all session cookies are HttpOnly/SameSite=Lax. Auth mutations require trusted origins, native auth rate limits use the database, and logs redact cookies and authorization headers. Email verification and password recovery are not configured in this local showcase; no email is sent.
+
+The app bootstraps indexes before accepting API traffic; `pnpm db:migrate` repeats the same idempotent bootstrap manually. Collections:
+
+| Collection                                        | Purpose                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------- |
+| users, memberships                                | Identity and the workspace role                                       |
+| sessions, accounts, verifications, authRateLimits | Better Auth session, credential, verification, and rate-limit storage |
+| workflowDefinitions                               | Versioned workflow structure                                          |
+| runs, runEvents                                   | Future execution state and an ordered event history                   |
+| approvals                                         | Proposed decisions and future resolution records                      |
+| idempotencyKeys                                   | Unique keys for the reliability layer in Step 4                       |
+| deadLetters, outbox                               | Future failed-work context and outbound-effect records                |
+
+The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, memberships, event sequence numbers, and outbox keys. Shared Zod schemas define every document and the AG-UI-shaped run-event union; application repositories validate writes and reads. Better Auth owns its MongoDB adapter and auth-record lifecycle. Domain execution/event emission is deferred to Step 3; the unique index alone does not claim exactly-once effects.
 
 ## Workspace
 
-| Package              | Responsibility                                                                                              |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `apps/web`           | Next.js App Router, Tailwind, shadcn-style local Button, theme toggle and health proxy                      |
-| `apps/api`           | Express 5 routes → controllers → services; request IDs, validation, consistent errors and dependency health |
-| `apps/worker`        | BullMQ `workflow-runs` consumer; logs job IDs, without executing workflows                                  |
-| `packages/shared`    | Shared Zod contracts and infrastructure configuration                                                       |
-| `packages/workflows` | Typed definition contract; graph execution begins in Step 3                                                 |
+| Package              | Responsibility                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| `apps/web`           | Next.js App Router, Tailwind, local Button, themes, auth forms, protected pages and role-aware navigation |
+| `apps/api`           | Express routes → controllers → services → repositories; health, Better Auth, RBAC and indexes             |
+| `apps/worker`        | BullMQ `workflow-runs` consumer; logs job IDs, without executing workflows                                |
+| `packages/shared`    | Zod document/API/event contracts, permissions and infrastructure configuration                            |
+| `packages/workflows` | Typed definition contract; graph execution begins in Step 3                                               |
 
 Validation results are available on `res.locals.body`, `.query`, or `.params`, avoiding mutation of Express 5 request getters. Health returns HTTP 503 with per-service flags when a dependency fails. Shutdown stops accepting work, closes connections, and has a ten-second deadline.
 
@@ -47,10 +80,15 @@ The prepare script uses Husky 9's `bin.js` entry point and skips hook setup when
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:integration
 pnpm build
 ```
 
-Tests inject dependency probes and never use real services or models. CI runs these checks on Node 24. `pnpm format` formats the workspace. Husky installs only when a Git checkout exists; lint-staged checks staged files. No Git history is created by the scaffold.
+`pnpm test` runs auth HTTP flows with Better Auth's in-memory adapter, RBAC, contracts, and health checks without external services or models. The two MongoDB integration checks are skipped unless `INTEGRATION_MONGODB_URI` is set. `pnpm test:integration` loads the root `.env`, connects to local MongoDB, and creates a random `unkillable_test_*` database that it drops afterward; it never drops the application database. It verifies idempotent indexes, unique-key rejection, persistent sessions across API instances, and role enforcement using the real MongoDB adapter/transactions.
+
+CI runs on Node 24 and starts Compose services for the MongoDB integration suite before building the web app. `pnpm format` formats the workspace. Husky installs only when a Git checkout exists; lint-staged checks staged files.
+
+Auth implementation references: [Better Auth MongoDB adapter](https://better-auth.com/docs/adapters/mongo), [database customization/hooks](https://better-auth.com/docs/concepts/database), and [session management](https://better-auth.com/docs/concepts/session-management). Registration provisions a viewer membership after identity creation; if that write fails, access remains denied until membership is repaired by local seed. The signing secret must remain stable across API restarts.
 
 Official references consulted for the foundation: [Next.js installation](https://nextjs.org/docs/app/getting-started/installation), [Express error handling](https://expressjs.com/en/guide/error-handling/), [BullMQ graceful shutdown](https://docs.bullmq.io/guide/workers/graceful-shutdown), and [shadcn manual installation](https://ui.shadcn.com/docs/installation/manual). Exact installed dependency versions are recorded in `pnpm-lock.yaml`.
 

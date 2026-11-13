@@ -1,4 +1,7 @@
 import { z } from 'zod';
+export * from './domain';
+export * from './events';
+export * from './auth';
 
 export const healthSchema = z.object({
   status: z.enum(['ok', 'degraded']),

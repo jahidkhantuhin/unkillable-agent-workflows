@@ -3,6 +3,10 @@ import { Redis } from 'ioredis';
 import pino from 'pino';
 import { configSchema } from './config';
 import { createApp } from './app';
+import { bootstrapIndexes } from './repositories/indexes';
+import { MongoMembershipRepository } from './repositories/documents';
+import { createMongoAuth } from './auth';
+import { AuthService } from './services/auth';
 const config = configSchema.parse(process.env);
 const logger = pino({ level: config.LOG_LEVEL });
 const mongo = new MongoClient(config.MONGODB_URI, {
@@ -14,6 +18,15 @@ const redis = new Redis(config.REDIS_URL, {
   connectTimeout: 2000,
 });
 redis.on('error', (err) => logger.warn({ err }, 'Redis unavailable'));
+await mongo.connect();
+await bootstrapIndexes(mongo.db());
+const memberships = new MongoMembershipRepository(mongo.db());
+const auth = createMongoAuth(mongo, memberships, {
+  secret: config.BETTER_AUTH_SECRET,
+  baseURL: config.BETTER_AUTH_URL,
+  trustedOrigins: config.CORS_ORIGINS,
+  production: config.NODE_ENV === 'production',
+});
 const app = createApp(
   {
     mongo: async () => {
@@ -24,6 +37,7 @@ const app = createApp(
   },
   config.CORS_ORIGINS,
   config.LOG_LEVEL,
+  new AuthService(auth, memberships, config.BETTER_AUTH_URL),
 );
 const server = app.listen(config.API_PORT, () =>
   logger.info({ port: config.API_PORT }, 'API listening'),

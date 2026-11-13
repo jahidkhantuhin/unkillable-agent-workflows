@@ -6,5 +6,6 @@ Do not run Git commands unless explicitly requested. Author: Jahid Khan Tuhin.
 Keep README.md and docs/PROGRESS.md current; record actual verification results.
 Never use real customer, banking, payment, or email side effects. Tests use mocks.
 
-Current scope: Step 1, monorepo foundation, implemented. See docs/PROGRESS.md
-for verification. Wait for the user's review and continuation before Step 2.
+Current scope: Step 2, domain model, authentication, and RBAC, implemented.
+See docs/PROGRESS.md for verification. Wait for user review and continuation
+before beginning Step 3. Do not run Git commands; the user commits each step.

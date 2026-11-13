@@ -27,3 +27,24 @@ The user's startup exposed missing local CLI entry points. A forced frozen-lockf
 Verification also uncovered empty directories where pnpm's hoisted dependency junctions should have been, preventing transitive React type resolution. Rebuilt only the generated `node_modules/.pnpm/node_modules` directory and repeated the forced install; all five workspace typechecks now pass.
 
 Verified installation succeeds and `pnpm dev` starts all three apps, including `API listening`, `Worker ready`, and Next.js ready on port 3000. Dashboard, API health, and the web health proxy return HTTP 200 with MongoDB and Redis healthy. The six tests pass. Added dependency-repair instructions to README. Step 2 remains unstarted.
+
+## Step 2: Domain model, authentication, and RBAC
+
+Added shared Zod document schemas and an AG-UI-shaped event union; created/indexed users, memberships, workflowDefinitions, runs, runEvents, approvals, idempotencyKeys, deadLetters, outbox, and Better Auth's supporting collections. Added idempotent index bootstrap, validated application repositories, migration and local seed commands. The idempotency key index is unique; effect execution remains outside this step.
+
+Better Auth 1.7.23 now provides MongoDB-backed email/password authentication and persistent cookie sessions. Registration defaults to viewer; admin/approver assignment is restricted to local seed configuration. Added login/register/logout/me endpoints, server-enforced permission checks, protected workspace pages, role-aware navigation, a user menu, and a same-origin auth proxy. See STEP-2.md for session, role, and failure-handling decisions.
+
+Verification performed locally:
+
+- `pnpm lint` and `pnpm typecheck` pass.
+- `pnpm test`: 23 pass; the 2 external MongoDB checks are deliberately skipped in this command.
+- `pnpm test:integration`: 2 pass using isolated temporary MongoDB databases. Verified repeated index bootstrap, duplicate-key rejection, actual MongoDB auth transactions, sessions reused by a second API instance, role checks, logout, and rejection of revoked sessions.
+- `pnpm build` passes; workspace and auth routes are dynamic.
+- `pnpm db:migrate` succeeds. `pnpm seed` run twice succeeds without duplicating the account or resetting its password.
+- `pnpm dev` starts web/API/worker. Through the actual web proxy: anonymous `/runs` redirects to `/login`; login/me return 200, authenticated workspace pages render, logout returns 204, and cookie replay returns 401. A local viewer sees an access restriction at `/chaos`; the API returns 403 for the same permission.
+- Browser sign-in as the seeded local administrator was verified. The UI shows the current role, all admin sections, and healthy API status. A screenshot is saved at screenshots/step-2-admin.jpg.
+- CI now starts local Compose services for the MongoDB integration tests. A remote CI run is not confirmed here.
+
+Implementation issue fixed: the current MongoDB driver does not accept the attempted `dbName` constructor option, so the auth factory accepts an explicit database for isolated tests while sharing the transaction-capable client.
+
+New configuration: BETTER_AUTH_SECRET, BETTER_AUTH_URL, API_INTERNAL_URL, SEED_EMAIL, SEED_PASSWORD, SEED_NAME, SEED_ROLE. The existing local .env was extended with missing settings and a private generated secret; .env.example documents all variables. No real model calls, external emails/payments, or Git commands were used. Step 3 has not started; awaiting review and continuation.

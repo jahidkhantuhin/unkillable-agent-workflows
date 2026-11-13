@@ -4,6 +4,7 @@ import { Activity, ShieldCheck } from 'lucide-react';
 import { Providers, ThemeToggle } from '@/components/providers';
 import { ApiStatus } from '@/components/status';
 import { Navigation } from '@/components/navigation';
+import { UserMenu } from '@/components/user-menu';
 import './globals.css';
 export const metadata: Metadata = {
   title: 'Unkillable · Agent Workflows',
@@ -49,6 +50,7 @@ export default function RootLayout({
                 <div className="flex items-center gap-3">
                   <ApiStatus />
                   <ThemeToggle />
+                  <UserMenu />
                 </div>
               </header>
               <main className="mx-auto max-w-7xl px-6 py-12 lg:px-12">

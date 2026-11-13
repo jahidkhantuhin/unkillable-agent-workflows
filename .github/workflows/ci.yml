@@ -14,4 +14,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: docker compose up -d --wait mongo redis mailpit
+      - run: docker compose up mongo-init
+      - name: MongoDB auth and index integration
+        run: pnpm exec vitest run apps/api/src/database.integration.test.ts
+        env:
+          INTEGRATION_MONGODB_URI: mongodb://127.0.0.1:27017/unkillable_ci?replicaSet=rs0&directConnection=true
+      - if: always()
+        run: docker compose down
       - run: pnpm build

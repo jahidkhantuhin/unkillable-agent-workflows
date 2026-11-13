@@ -11,7 +11,10 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "build": "pnpm -r build",
-    "prepare": "node scripts/prepare.mjs"
+    "prepare": "node scripts/prepare.mjs",
+    "db:migrate": "pnpm --filter @unkillable/api migrate",
+    "seed": "pnpm --filter @unkillable/api seed",
+    "test:integration": "tsx --env-file=.env scripts/test-integration.ts"
   },
   "dependencies": {},
   "devDependencies": {
