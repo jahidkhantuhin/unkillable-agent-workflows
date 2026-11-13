@@ -72,6 +72,12 @@ Validation results are available on `res.locals.body`, `.query`, or `.params`, a
 
 ## Development checks
 
+Before each push, Husky runs `pnpm check`: lint/formatting → typecheck → tests → production build. The first failed check stops the sequence and blocks the push. You can run `pnpm check` manually without pushing. The pre-commit hook still runs lint-staged.
+
+After pulling these changes, run `pnpm prepare` once to activate the Git hooks (normal `pnpm install` also runs prepare). Hook setup is skipped if `HUSKY=0` or `CI` is set. Hook files use LF endings on Windows too. Local hooks can be bypassed, so CI remains the remote check.
+
+The pre-push checks do not start Docker or require MongoDB. Run `pnpm test:integration` separately with local MongoDB running; CI also runs those database checks.
+
 If `pnpm dev` reports missing `tsx` or Next.js CLI files, stop the dev processes, restore the installed packages and links with `pnpm install --frozen-lockfile --force`, then retry `pnpm dev`. A normal install can report everything up to date even when local package links are damaged. This repair keeps the dependency versions in the lockfile. If React declarations still fail to resolve, the generated hoisted links in `node_modules/.pnpm/node_modules` may also need rebuilding; remove only that generated directory and repeat the forced install.
 
 The prepare script uses Husky 9's `bin.js` entry point and skips hook setup when `CI` is set, `HUSKY=0`, or the directory has no `.git` entry.

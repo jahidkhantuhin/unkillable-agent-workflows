@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "build": "pnpm -r build",
     "prepare": "node scripts/prepare.mjs",
     "db:migrate": "pnpm --filter @unkillable/api migrate",
