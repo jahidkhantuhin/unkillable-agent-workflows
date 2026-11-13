@@ -6,7 +6,7 @@ export default function Home() {
     <>
       <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
         <span className="size-1.5 rounded-full bg-emerald-500" />
-        STEP 02 / HUMAN ACCESS
+        STEP 03 / DURABLE EXECUTION
       </div>
       <h1 className="max-w-3xl text-5xl font-semibold leading-[1.08] tracking-tight md:text-7xl">
         Agents that act.
@@ -89,12 +89,11 @@ export default function Home() {
             CURRENT BUILD
           </p>
           <h2 className="mt-3 text-xl font-medium">
-            Your workspace has an identity.
+            Your first durable workflow is ready.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Register or sign in to enter your workspace. Your role controls
-            which sections you can access. Workflow execution arrives next; no
-            runs have been executed yet.
+            Sign in, start the deterministic demo, and follow each checkpoint on
+            its live timeline. Completed work survives worker restarts.
           </p>
         </div>
       </section>

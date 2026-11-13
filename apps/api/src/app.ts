@@ -8,11 +8,14 @@ import { errorHandler } from './middleware/error';
 import type { HealthDependencies } from './services/health';
 import type { AuthService } from './services/auth';
 import { authRoutes } from './routes/auth';
+import type { RunService } from './services/runs';
+import { runsRoutes } from './routes/runs';
 export function createApp(
   deps: HealthDependencies,
   origins = ['http://localhost:3000'],
   level = 'info',
   authService?: AuthService,
+  runService?: RunService,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -38,6 +41,8 @@ export function createApp(
   );
   app.use(healthRoutes(deps));
   if (authService) app.use('/auth', authRoutes(authService, origins));
+  if (authService && runService)
+    app.use('/runs', runsRoutes(runService, authService, origins));
   app.use((req, res) => {
     res.status(404).json({
       error: {

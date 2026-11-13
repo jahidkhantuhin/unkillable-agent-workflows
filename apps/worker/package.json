@@ -11,10 +11,13 @@
   },
   "dependencies": {
     "@unkillable/shared": "workspace:*",
+    "@unkillable/workflows": "workspace:*",
     "bullmq": "6.7.6",
-    "pino": "latest",
     "ioredis": "latest",
-    "zod": "latest"
+    "mongodb": "7.9.0",
+    "pino": "latest",
+    "zod": "latest",
+    "@unkillable/storage": "workspace:*"
   },
   "devDependencies": {}
 }

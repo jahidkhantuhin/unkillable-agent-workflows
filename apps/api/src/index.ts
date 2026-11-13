@@ -7,6 +7,10 @@ import { bootstrapIndexes } from './repositories/indexes';
 import { MongoMembershipRepository } from './repositories/documents';
 import { createMongoAuth } from './auth';
 import { AuthService } from './services/auth';
+import { Queue } from 'bullmq';
+import { RunRepository } from '@unkillable/storage';
+import { RunService } from './services/runs';
+import { closeRunStreams } from './controllers/runs';
 const config = configSchema.parse(process.env);
 const logger = pino({ level: config.LOG_LEVEL });
 const mongo = new MongoClient(config.MONGODB_URI, {
@@ -27,6 +31,24 @@ const auth = createMongoAuth(mongo, memberships, {
   trustedOrigins: config.CORS_ORIGINS,
   production: config.NODE_ENV === 'production',
 });
+const queue = new Queue(config.RUN_QUEUE_NAME, { connection: redis });
+queue.on('error', (err) => logger.warn({ err }, 'Run queue unavailable'));
+const runService = new RunService(new RunRepository(mongo), queue, (error) =>
+  logger.warn({ err: error }, 'Run persisted; dispatch will be retried'),
+);
+await runService.initialize();
+const dispatchTimer = setInterval(() => {
+  void runService
+    .reconcile()
+    .catch((error) =>
+      logger.warn({ err: error }, 'Queue reconciliation will retry'),
+    );
+}, 5000).unref();
+void runService
+  .reconcile()
+  .catch((error) =>
+    logger.warn({ err: error }, 'Startup queue reconciliation will retry'),
+  );
 const app = createApp(
   {
     mongo: async () => {
@@ -38,6 +60,7 @@ const app = createApp(
   config.CORS_ORIGINS,
   config.LOG_LEVEL,
   new AuthService(auth, memberships, config.BETTER_AUTH_URL),
+  runService,
 );
 const server = app.listen(config.API_PORT, () =>
   logger.info({ port: config.API_PORT }, 'API listening'),
@@ -52,8 +75,11 @@ let closing = false;
 async function shutdown() {
   if (closing) return;
   closing = true;
+  clearInterval(dispatchTimer);
+  closeRunStreams();
   const timeout = setTimeout(() => process.exit(1), 10000).unref();
   server.close(async () => {
+    await queue.close();
     await mongo.close();
     redis.disconnect();
     clearTimeout(timeout);

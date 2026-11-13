@@ -54,6 +54,9 @@ export const runSchema = z.object({
   createdBy: idSchema,
   status: runStatusSchema,
   state: payloadSchema,
+  sequence: z.number().int().nonnegative().default(0),
+  dispatchPending: z.boolean().default(true),
+  error: z.string().optional(),
   parentRunId: idSchema.optional(),
   forkCheckpointId: idSchema.optional(),
 });
@@ -141,6 +144,7 @@ export const authRateLimitSchema = z.object({
 
 export const permissionSchema = z.enum([
   'runs:read',
+  'runs:create',
   'workflows:read',
   'approvals:read',
   'approvals:resolve',
@@ -152,6 +156,7 @@ export const rolePermissions: Record<Role, readonly Permission[]> = {
   viewer: ['runs:read', 'workflows:read'],
   approver: [
     'runs:read',
+    'runs:create',
     'workflows:read',
     'approvals:read',
     'approvals:resolve',

@@ -7,10 +7,16 @@ const result = spawnSync(
     'node_modules/vitest/vitest.mjs',
     'run',
     'apps/api/src/database.integration.test.ts',
+    'apps/api/src/runs.integration.test.ts',
+    'apps/worker/src/recovery.integration.test.ts',
   ],
   {
     stdio: 'inherit',
-    env: { ...process.env, INTEGRATION_MONGODB_URI: process.env.MONGODB_URI },
+    env: {
+      ...process.env,
+      INTEGRATION_MONGODB_URI: process.env.MONGODB_URI,
+      INTEGRATION_REDIS_URL: process.env.REDIS_URL,
+    },
   },
 );
 process.exitCode = result.status ?? 1;

@@ -6,6 +6,7 @@ Do not run Git commands unless explicitly requested. Author: Jahid Khan Tuhin.
 Keep README.md and docs/PROGRESS.md current; record actual verification results.
 Never use real customer, banking, payment, or email side effects. Tests use mocks.
 
-Current scope: Step 2, domain model, authentication, and RBAC, implemented.
+Current scope: Step 3, durable execution core, implemented.
 See docs/PROGRESS.md for verification. Wait for user review and continuation
-before beginning Step 3. Do not run Git commands; the user commits each step.
+before Step 4. Steps 1–2 are complete.
+Do not run Git commands; the user commits each step.

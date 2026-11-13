@@ -9,8 +9,14 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@unkillable/shared": "workspace:*"
+    "@langchain/langgraph": "1.7.4",
+    "@langchain/langgraph-checkpoint-mongodb": "1.5.1",
+    "@unkillable/shared": "workspace:*",
+    "mongodb-checkpoint-driver": "npm:mongodb@6.22.0"
   },
   "devDependencies": {},
-  "exports": "./src/index.ts"
+  "exports": {
+    ".": "./src/index.ts",
+    "./runtime": "./src/runtime.ts"
+  }
 }

@@ -6,6 +6,7 @@ const base = z.object({
   threadId: idSchema,
   sequence: z.number().int().positive(),
   timestamp: z.number().int().nonnegative(),
+  key: z.string().optional(),
 });
 const step = { stepName: z.string().min(1) };
 export const runEventSchema = z.discriminatedUnion('type', [
@@ -46,6 +47,8 @@ export const runEventSchema = z.discriminatedUnion('type', [
   base.extend({
     type: z.literal('CUSTOM'),
     name: z.enum([
+      'run.queued',
+      'run.resumed',
       'approval.requested',
       'approval.resolved',
       'retry.scheduled',

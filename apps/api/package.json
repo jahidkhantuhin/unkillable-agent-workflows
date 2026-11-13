@@ -19,10 +19,13 @@
     "express": "5.3.0",
     "helmet": "latest",
     "ioredis": "latest",
-    "mongodb": "latest",
+    "mongodb": "7.9.0",
     "pino": "latest",
     "pino-http": "latest",
-    "zod": "latest"
+    "zod": "latest",
+    "@unkillable/storage": "workspace:*",
+    "bullmq": "6.7.6",
+    "@unkillable/workflows": "workspace:*"
   },
   "devDependencies": {
     "@better-auth/memory-adapter": "1.7.23",

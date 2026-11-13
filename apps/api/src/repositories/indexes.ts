@@ -10,7 +10,14 @@ export const collectionIndexes: Record<string, IndexDescription[]> = {
     { key: { status: 1, createdAt: -1 } },
     { key: { createdBy: 1, createdAt: -1 } },
   ],
-  runEvents: [{ key: { runId: 1, sequence: 1 }, unique: true }],
+  runEvents: [
+    { key: { runId: 1, sequence: 1 }, unique: true },
+    {
+      key: { runId: 1, key: 1 },
+      unique: true,
+      partialFilterExpression: { key: { $type: 'string' } },
+    },
+  ],
   approvals: [
     { key: { runId: 1, nodeId: 1 }, unique: true },
     { key: { status: 1, createdAt: 1 } },

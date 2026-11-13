@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–2 provide the monorepo foundation, live infrastructure health, domain schemas/indexes, MongoDB-backed email/password authentication, and role-based access. Login/register and protected workspace pages work; workflow execution, approval actions, and chaos controls arrive in later steps. No reliability numbers are claimed yet.
+Steps 1–3 provide authentication/RBAC and durable execution of a deterministic demo workflow. Runs survive killed workers, save MongoDB checkpoints, and expose live/replayable timelines. Approvals, external effects, compensation, and chaos controls arrive in later steps. No chaos-report numbers are claimed yet.
 
 ## Quickstart
 
@@ -34,11 +34,11 @@ For a custom API address, set `API_INTERNAL_URL` in `apps/web/.env.local` and up
 
 Register at `/register`; accounts start as viewers. Registration accepts name, email, and a password of 12–128 characters; callers cannot supply a role. The seed command creates the local administrator using `SEED_EMAIL`, `SEED_PASSWORD`, `SEED_NAME`, and `SEED_ROLE` from `.env`. Example defaults are **local demo credentials only**: `admin@example.test` / `local-demo-password-change-me`. Set your own values before seeding if preferred. Re-running seed preserves existing passwords and applies the configured role; seeding is disabled in production.
 
-| Role     | Workspace access                                                            |
-| -------- | --------------------------------------------------------------------------- |
-| viewer   | Runs and Workflows                                                          |
-| approver | Viewer access plus Approvals; permission to resolve future approval actions |
-| admin    | All sections, including Chaos and Analytics                                 |
+| Role     | Workspace access                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------- |
+| viewer   | Runs and Workflows                                                                                 |
+| approver | Viewer access plus starting demo runs and Approvals; permission to resolve future approval actions |
+| admin    | All sections, including Chaos and Analytics                                                        |
 
 Step 2 controls access to these sections; it does not implement their later workflow actions. Navigation hides unauthorized sections, protected pages recheck the session on the server, and API permission checks read the current membership on every request. Role changes do not require re-login; the navigation refreshes on window focus. Missing memberships fail closed. This is one local workspace (`workspaceId=local`), not a multi-tenant implementation.
 
@@ -51,12 +51,30 @@ The app bootstraps indexes before accepting API traffic; `pnpm db:migrate` repea
 | users, memberships                                | Identity and the workspace role                                       |
 | sessions, accounts, verifications, authRateLimits | Better Auth session, credential, verification, and rate-limit storage |
 | workflowDefinitions                               | Versioned workflow structure                                          |
-| runs, runEvents                                   | Future execution state and an ordered event history                   |
+| runs, runEvents                                   | Execution state and append-only event history                         |
 | approvals                                         | Proposed decisions and future resolution records                      |
 | idempotencyKeys                                   | Unique keys for the reliability layer in Step 4                       |
 | deadLetters, outbox                               | Future failed-work context and outbound-effect records                |
 
-The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, memberships, event sequence numbers, and outbox keys. Shared Zod schemas define every document and the AG-UI-shaped run-event union; application repositories validate writes and reads. Better Auth owns its MongoDB adapter and auth-record lifecycle. Domain execution/event emission is deferred to Step 3; the unique index alone does not claim exactly-once effects.
+The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, memberships, event sequence numbers, and outbox keys. Shared Zod schemas define every document and the AG-UI-shaped run-event union; application repositories validate writes and reads. Better Auth owns its MongoDB adapter and auth-record lifecycle. Execution now uses transactional run/event writes; the unique index alone does not claim exactly-once external effects.
+
+## Durable demo runs (Step 3)
+
+**What the worker does:** The API accepts requests and queues jobs. The worker performs the workflow work. Currently, it uses no AI model and sends no emails or payments.
+
+**What happens if it crashes:** A replacement worker picks up the abandoned job and resumes from the last saved checkpoint. The interrupted step may run again; completed, checkpointed steps are preserved. A replacement worker must be started for recovery to happen; automatic process supervision comes in a later step.
+
+Sign in as the seeded admin, open **Runs**, enter a message, and choose **Start demo run**. Approvers can start runs too; viewers can inspect them. The three pure nodes are `prepare → summarize → complete`, with a configurable delay so progress is visible. No model, payment, email, or external action is called. The list refreshes automatically; each detail page shows the timeline, checkpointed steps, saved state, reconnect status, and recovery events.
+
+`POST /runs` accepts `{"input":{"message":"Keep this run alive"}}` and returns HTTP 202. The optional workflowId is fixed to `durability-demo`. `GET /runs` supports limit (1–100) and status; `GET /runs/:id` returns state. Routes require a session; creation also requires a trusted Origin and runs:create permission. All runs are in the one local workspace. The server generates run UUIDs; clients never choose LangGraph thread IDs.
+
+The API saves the queued run/event transactionally, then adds a BullMQ job with jobId=runId. Its five-second reconciliation loop (also run at startup) retries pending dispatch after an API crash or Redis outage. It never invokes graphs. The worker uses LangGraph.js 1.7.4 and MongoDBSaver 1.5.1 with thread_id=runId and synchronous durability. Completed nodes are reported after their native checkpoint write; missing notifications are reconciled on resume. An unfinished pure node can run again. External-effect idempotency remains Step 4 work.
+
+`GET /runs/:id/events` streams append-only MongoDB events with numeric per-run SSE IDs. Last-Event-ID resumes strictly after that sequence; a fresh client can use ?after=N. Invalid/ahead cursors are rejected. Completed runs replay through the same endpoint. Heartbeats and session rechecks occur every 15 seconds; writes respect backpressure, headers disable buffering, and disconnects stop polling. The Next.js proxy forwards the streaming body and cursor header. EventSource reconnects automatically; the UI deduplicates sequences and reconstructs history after refresh.
+
+New optional settings in .env.example: RUN_QUEUE_NAME=workflow-runs, WORKER_LOCK_DURATION_MS=15000, WORKER_STALLED_INTERVAL_MS=5000, WORKER_MAX_STALLED_COUNT=3, DEMO_NODE_DELAY_MS=1500. API and worker must share a queue name. Locks renew every half lock duration; replacement workers recover expired locks during stalled scans. Exhausted stalled jobs become failed runs. Checkpoints are retained without TTL. There is no supervisor/kill button yet. Reserved approval, compensation, and cancellation states gain their behavior in later steps.
+
+See [docs/STEP-3.md](docs/STEP-3.md) for boundaries and verification. Shared Node-only run/event persistence lives in `packages/storage`; browser code only imports shared contracts.
 
 ## Workspace
 
@@ -64,11 +82,13 @@ The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, 
 | -------------------- | --------------------------------------------------------------------------------------------------------- |
 | `apps/web`           | Next.js App Router, Tailwind, local Button, themes, auth forms, protected pages and role-aware navigation |
 | `apps/api`           | Express routes → controllers → services → repositories; health, Better Auth, RBAC and indexes             |
-| `apps/worker`        | BullMQ `workflow-runs` consumer; logs job IDs, without executing workflows                                |
+| `apps/worker`        | BullMQ consumer, LangGraph executor and checkpoint recovery                                               |
 | `packages/shared`    | Zod document/API/event contracts, permissions and infrastructure configuration                            |
-| `packages/workflows` | Typed definition contract; graph execution begins in Step 3                                               |
+| `packages/workflows` | Typed demo definition, pure nodes and durable graph runtime                                               |
 
 Validation results are available on `res.locals.body`, `.query`, or `.params`, avoiding mutation of Express 5 request getters. Health returns HTTP 503 with per-service flags when a dependency fails. Shutdown stops accepting work, closes connections, and has a ten-second deadline.
+
+The worker allows up to twenty seconds for graceful shutdown; the API retains its ten-second deadline.
 
 ## Development checks
 
@@ -76,7 +96,7 @@ Before each push, Husky runs `pnpm check`: lint/formatting → typecheck → tes
 
 After pulling these changes, run `pnpm prepare` once to activate the Git hooks (normal `pnpm install` also runs prepare). Hook setup is skipped if `HUSKY=0` or `CI` is set. Hook files use LF endings on Windows too. Local hooks can be bypassed, so CI remains the remote check.
 
-The pre-push checks do not start Docker or require MongoDB. Run `pnpm test:integration` separately with local MongoDB running; CI also runs those database checks.
+The pre-push checks do not start Docker or require MongoDB. Run `pnpm test:integration` separately with local MongoDB and Redis running; CI also runs those database checks.
 
 If `pnpm dev` reports missing `tsx` or Next.js CLI files, stop the dev processes, restore the installed packages and links with `pnpm install --frozen-lockfile --force`, then retry `pnpm dev`. A normal install can report everything up to date even when local package links are damaged. This repair keeps the dependency versions in the lockfile. If React declarations still fail to resolve, the generated hoisted links in `node_modules/.pnpm/node_modules` may also need rebuilding; remove only that generated directory and repeat the forced install.
 
@@ -90,7 +110,7 @@ pnpm test:integration
 pnpm build
 ```
 
-`pnpm test` runs auth HTTP flows with Better Auth's in-memory adapter, RBAC, contracts, and health checks without external services or models. The two MongoDB integration checks are skipped unless `INTEGRATION_MONGODB_URI` is set. `pnpm test:integration` loads the root `.env`, connects to local MongoDB, and creates a random `unkillable_test_*` database that it drops afterward; it never drops the application database. It verifies idempotent indexes, unique-key rejection, persistent sessions across API instances, and role enforcement using the real MongoDB adapter/transactions.
+`pnpm test` runs auth, RBAC, schema, lifecycle, and health checks without external services or models. Integration files skip unless their connection variables are set. `pnpm test:integration` loads .env, uses random unkillable_test_* databases and a unique test queue, and removes only those resources. It covers persistent auth, indexes, run API/dispatch recovery, ordered events, SSE replay, a real child-worker kill followed by stalled recovery, the final-checkpoint crash boundary, and terminal redelivery. Tests never kill your normal worker or API.
 
 CI runs on Node 24 and starts Compose services for the MongoDB integration suite before building the web app. `pnpm format` formats the workspace. Husky installs only when a Git checkout exists; lint-staged checks staged files.
 

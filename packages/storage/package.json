@@ -1,0 +1,16 @@
+{
+  "name": "@unkillable/storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "author": "Jahid Khan Tuhin",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@unkillable/shared": "workspace:*",
+    "mongodb": "7.9.0"
+  }
+}

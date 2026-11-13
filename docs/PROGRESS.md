@@ -56,3 +56,25 @@ Added `pnpm check` and a Husky pre-push hook that runs lint/formatting, typechec
 Hook activation is left to the user's `pnpm prepare` because the repository instructions reserve Git commands for the user, and Husky setup runs `git config` internally. No commit or push is performed by this follow-up.
 
 Verification: `pnpm check` passes lint/formatting, all workspace typechecks, 23 tests (the 2 MongoDB integration checks are deliberately skipped), and the production build. Hook shell syntax passes; a simulated failing check propagates exit code 23. Actual push invocation is not tested because Git commands were not run. No new environment variables.
+
+## Step 3: Durable execution core
+
+Added authenticated run creation/list/detail endpoints, a deterministic prepare → summarize → complete graph, MongoDB-backed LangGraph checkpoints, BullMQ stalled-job recovery, transactional ordered run events, and SSE live/replay streaming. The Runs UI now starts demos, refreshes live statuses, shows checkpointed steps/state, and reconstructs its timeline after refresh or reconnect. Admins/approvers create runs; viewers retain read access.
+
+Added a small Node-only `packages/storage` workspace so the API and worker share validated run/event repositories without importing each other's application code. Run creation and its queued event commit together; pending-dispatch reconciliation handles the MongoDB/Redis handoff after an API crash or queue outage. Stable job IDs prevent duplicate reconciliation jobs. Event/state changes are transactional; completed checkpoint notifications are deduplicated and reconciled after recovery. See STEP-3.md for the boundaries and configuration rationale.
+
+Runtime versions checked against official documentation and installed types: LangGraph.js 1.7.4, MongoDBSaver 1.5.1, BullMQ 6.7.6. The saver requires MongoDB driver 6.x, so its connection uses an explicit 6.22.0 alias; application repositories use 7.9.0. The worker calls setup and checks returned index errors, uses one thread per run UUID and synchronous durability, and resumes existing threads with null input.
+
+Verification performed locally:
+
+- Lint and all workspace typechecks pass; the production Next.js build passes with dynamic Runs/detail routes.
+- `pnpm test`: 34 pass; 6 integration checks deliberately skip without service connection variables.
+- `pnpm test:integration`: all 6 pass, including existing auth/index checks, run API/RBAC, enqueue outage and restart reconciliation, concurrent ordered event allocation/deduplication, strict Last-Event-ID replay, a real child-process worker kill/stalled recovery test, final-checkpoint recovery before terminal publication, and terminal redelivery without extra events.
+- The killed-worker test asserts the checkpointed prepare node starts/finishes once, the interrupted summarize node starts again, all three nodes complete, and event sequence IDs remain continuous. It uses its own temporary database and queue and never kills the normal dev worker.
+- Live HTTP through the actual web proxy: POST returns 202; an SSE event arrives before completion; an interrupted stream resumes beyond its cursor and receives RUN_FINISHED; GET returns succeeded and all three completed nodes.
+- CI now includes the run API and real worker recovery integration suites with MongoDB and Redis.
+- Final `pnpm check` passes the same lint, typecheck, 34 service-free tests, and production build sequence used by the pre-push hook. Browser preview verification could not finish because the browser connection failed; direct HTTP login-page and API-health requests still return 200. Visual inspection of the new timeline is unverified.
+
+New optional environment variables documented in .env.example: RUN_QUEUE_NAME, WORKER_LOCK_DURATION_MS, WORKER_STALLED_INTERVAL_MS, WORKER_MAX_STALLED_COUNT, DEMO_NODE_DELAY_MS. Defaults work with the existing local .env. No model calls or real customer effects, Git commands, commits, or pushes were used. Exactly-once effects, retry policies, approvals, compensation, React Flow, and chaos controls remain in their assigned later steps. Step 4 has not started.
+
+Documentation follow-up: added a plain-language explanation of API versus worker responsibilities, checkpoint recovery, possible replay of the interrupted step, and the current absence of AI calls, emails, and payments to README.md and STEP-3.md. Clarified that recovery needs a running replacement worker; process supervision is not implemented in Step 3.

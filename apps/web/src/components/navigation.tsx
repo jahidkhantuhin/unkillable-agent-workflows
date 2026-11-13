@@ -21,7 +21,7 @@ export function Navigation() {
           ];
         if (!identity || !hasPermission(identity.role, permission)) return null;
         const href = `/${name.toLowerCase()}`;
-        const active = pathname === href;
+        const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={name}

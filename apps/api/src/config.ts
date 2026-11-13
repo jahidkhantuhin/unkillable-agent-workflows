@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { infrastructureSchema } from '@unkillable/shared';
+import { infrastructureSchema, runQueueConfigSchema } from '@unkillable/shared';
 export const configSchema = infrastructureSchema
   .extend({
+    ...runQueueConfigSchema.shape,
     API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z

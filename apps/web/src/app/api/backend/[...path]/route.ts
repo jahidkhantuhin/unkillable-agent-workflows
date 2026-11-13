@@ -12,30 +12,58 @@ async function forward(
 ) {
   const { path } = await context.params;
   const pathname = path.join('/');
-  if (!allowedPaths.has(pathname))
+  const isRun =
+    pathname === 'runs' || /^runs\/[0-9a-f-]{36}(\/events)?$/.test(pathname);
+  const stream = isRun && pathname.endsWith('/events');
+  if (!allowedPaths.has(pathname) && !isRun)
     return NextResponse.json(
       { error: { message: 'Not found' } },
       { status: 404 },
     );
-  if ((request.method === 'GET') !== (pathname === 'auth/me'))
+  if (
+    isRun
+      ? request.method !== 'GET' &&
+        !(pathname === 'runs' && request.method === 'POST')
+      : (request.method === 'GET') !== (pathname === 'auth/me')
+  )
     return NextResponse.json(
       { error: { message: 'Method not allowed' } },
       { status: 405 },
     );
   try {
     const headers = new Headers();
-    for (const name of ['cookie', 'origin', 'content-type', 'user-agent']) {
+    for (const name of [
+      'cookie',
+      'origin',
+      'content-type',
+      'user-agent',
+      'last-event-id',
+    ]) {
       const value = request.headers.get(name);
       if (value) headers.set(name, value);
     }
-    const response = await fetch(`${apiURL}/${pathname}`, {
-      method: request.method,
-      headers,
-      body: request.method === 'GET' ? undefined : await request.text(),
-      cache: 'no-store',
-      redirect: 'manual',
-      signal: AbortSignal.timeout(15000),
-    });
+    const response = await fetch(
+      `${apiURL}/${pathname}${new URL(request.url).search}`,
+      {
+        method: request.method,
+        headers,
+        body: request.method === 'GET' ? undefined : await request.text(),
+        cache: 'no-store',
+        redirect: 'manual',
+        signal: stream
+          ? request.signal
+          : AbortSignal.any([request.signal, AbortSignal.timeout(15000)]),
+      },
+    );
+    if (stream && response.ok)
+      return new Response(response.body, {
+        status: response.status,
+        headers: {
+          'content-type': 'text/event-stream; charset=utf-8',
+          'cache-control': 'no-cache, no-transform',
+          'x-accel-buffering': 'no',
+        },
+      });
     const result = new Response(
       response.status === 204 ? null : await response.text(),
       {
