@@ -1,0 +1,16 @@
+{
+  "name": "@unkillable/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "author": "Jahid Khan Tuhin",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "latest"
+  },
+  "devDependencies": {},
+  "exports": "./src/index.ts"
+}

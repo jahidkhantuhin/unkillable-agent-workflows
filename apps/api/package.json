@@ -1,0 +1,29 @@
+{
+  "name": "@unkillable/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "author": "Jahid Khan Tuhin",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit",
+    "dev": "tsx watch --env-file=../../.env src/index.ts"
+  },
+  "dependencies": {
+    "@unkillable/shared": "workspace:*",
+    "express": "5.3.0",
+    "zod": "latest",
+    "pino": "latest",
+    "pino-http": "latest",
+    "helmet": "latest",
+    "cors": "latest",
+    "mongodb": "latest",
+    "ioredis": "latest"
+  },
+  "devDependencies": {
+    "@types/express": "latest",
+    "@types/cors": "latest",
+    "@types/supertest": "latest",
+    "supertest": "latest"
+  }
+}

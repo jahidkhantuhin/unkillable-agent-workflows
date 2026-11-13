@@ -1,0 +1,30 @@
+{
+  "name": "@unkillable/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "author": "Jahid Khan Tuhin",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@unkillable/shared": "workspace:*",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "next-themes": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "tailwind-merge": "latest",
+    "lucide-react": "latest",
+    "@radix-ui/react-slot": "latest"
+  },
+  "devDependencies": {
+    "tailwindcss": "4.3.5",
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/react": "latest",
+    "@types/react-dom": "latest"
+  }
+}

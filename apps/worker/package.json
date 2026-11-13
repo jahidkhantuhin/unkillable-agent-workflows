@@ -1,0 +1,20 @@
+{
+  "name": "@unkillable/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "author": "Jahid Khan Tuhin",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit",
+    "dev": "tsx watch --env-file=../../.env src/index.ts"
+  },
+  "dependencies": {
+    "@unkillable/shared": "workspace:*",
+    "bullmq": "6.7.6",
+    "pino": "latest",
+    "ioredis": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {}
+}

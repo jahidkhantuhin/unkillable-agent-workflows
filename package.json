@@ -1,0 +1,40 @@
+{
+  "name": "unkillable-agent-workflows",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "author": "Jahid Khan Tuhin",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "build": "pnpm -r build",
+    "prepare": "node scripts/prepare.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "typescript-eslint": "latest",
+    "eslint": "10.14.0",
+    "prettier": "latest",
+    "typescript": "6.0.3",
+    "tsx": "latest",
+    "vitest": "latest",
+    "@types/node": "latest",
+    "husky": "latest",
+    "lint-staged": "latest"
+  },
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md,yaml,yml}": "prettier --write"
+  }
+}

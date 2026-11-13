@@ -1,0 +1,16 @@
+{
+  "name": "@unkillable/workflows",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "author": "Jahid Khan Tuhin",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@unkillable/shared": "workspace:*"
+  },
+  "devDependencies": {},
+  "exports": "./src/index.ts"
+}
