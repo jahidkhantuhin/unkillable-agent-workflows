@@ -10,6 +10,7 @@ export const deliveryModeSchema = z.enum([
 ]);
 export const demoWorkflowVersion = 3;
 export const demoInputSchema = z.strictObject({
+  title: z.string().trim().min(1).max(200).optional(),
   message: z.string().trim().min(1).max(500),
   deliveryMode: deliveryModeSchema.optional(),
   requireApproval: z.boolean().optional(),
@@ -22,6 +23,7 @@ export const demoNodeSchema = z.enum([
   'complete',
 ]);
 export const demoStateSchema = z.object({
+  title: z.string().default(''),
   message: z.string(),
   normalized: z.string().default(''),
   summary: z.string().default(''),

@@ -49,6 +49,7 @@ export class ApprovalRepository {
     execution: number,
     checkpointId: string,
     message: string,
+    title = '',
   ) {
     const session = this.client.startSession();
     try {
@@ -63,6 +64,7 @@ export class ApprovalRepository {
           return;
         const now = new Date();
         const record = approvalSchema.parse({
+          title,
           id: randomUUID(),
           runId,
           nodeId: 'approval',

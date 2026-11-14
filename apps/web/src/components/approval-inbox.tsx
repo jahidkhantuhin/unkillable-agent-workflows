@@ -45,7 +45,9 @@ function ApprovalCard({
   }
   return (
     <article className="rounded-2xl border border-border p-6">
-      <h2 className="break-words text-lg font-semibold">{original}</h2>
+      <h2 className="break-words text-lg font-semibold">
+        {approval.title || original}
+      </h2>
       <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
         Pending review · Local notice
       </p>

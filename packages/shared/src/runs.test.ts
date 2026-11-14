@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { canTransition, createRunSchema, eventCursorSchema } from './runs';
 describe('run lifecycle contracts', () => {
+  it('accepts separate titles and content while preserving legacy message-only requests', () => {
+    expect(
+      createRunSchema.parse({
+        input: { title: ' Test identity ', message: ' Notice content ' },
+      }).input,
+    ).toMatchObject({ title: 'Test identity', message: 'Notice content' });
+    expect(
+      createRunSchema.safeParse({ input: { message: 'Legacy notice' } })
+        .success,
+    ).toBe(true);
+    for (const title of [' ', 'x'.repeat(201)])
+      expect(
+        createRunSchema.safeParse({ input: { title, message: 'Notice' } })
+          .success,
+      ).toBe(false);
+  });
   it.each([
     ['queued', 'running', true],
     ['queued', 'succeeded', false],

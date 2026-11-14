@@ -10,7 +10,7 @@ import {
 } from '@unkillable/shared';
 import { Button } from './ui/button';
 import { useAuth } from './auth-provider';
-import { RunScenario } from './run-scenario';
+import { RunScenario, runTitle } from './run-scenario';
 export function RunStatus({ status }: { status: string }) {
   return (
     <span
@@ -70,6 +70,7 @@ export function RunsList() {
       const form = new FormData(event.currentTarget);
       const input = createRunSchema.parse({
         input: {
+          title: form.get('title'),
           message: form.get('message'),
           deliveryMode: form.get('deliveryMode'),
           requireApproval: form.get('requireApproval') === 'on',
@@ -113,17 +114,38 @@ export function RunsList() {
           or external actions.
         </p>
         {identity && hasPermission(identity.role, 'runs:create') ? (
-          <form onSubmit={start} className="mt-5 flex flex-wrap gap-3">
-            <label className="min-w-0 flex-1">
-              <span className="sr-only">Demo message</span>
+          <form
+            onSubmit={start}
+            className="mt-5 flex flex-wrap items-end gap-4"
+          >
+            <label className="w-full text-sm font-medium">
+              Test title
               <input
+                name="title"
+                required
+                maxLength={200}
+                defaultValue="My workflow test"
+                className="mt-2 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"
+              />
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                A name to identify this run. Approval edits do not change it.
+              </span>
+            </label>
+            <label className="w-full text-sm font-medium">
+              Notice content
+              <textarea
                 name="message"
-                aria-label="Demo message"
+                aria-label="Notice content"
                 required
                 maxLength={500}
+                rows={3}
                 defaultValue="Keep my workflow running after a worker restart"
-                className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                className="mt-2 w-full rounded-lg border border-border bg-background p-3 text-sm"
               />
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                The local notice to deliver. An approver can edit this content
+                before delivery.
+              </span>
             </label>
             <label className="text-xs text-muted-foreground">
               Local delivery simulation
@@ -189,7 +211,7 @@ export function RunsList() {
                 >
                   <div>
                     <h2 className="break-words text-lg font-semibold">
-                      {String(run.state.message ?? '')}
+                      {runTitle(run.state)}
                     </h2>
                     <div className="mt-2">
                       <RunScenario state={run.state} />

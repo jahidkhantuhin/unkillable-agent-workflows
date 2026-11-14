@@ -127,7 +127,13 @@ describe.skipIf(!uri || !redis)('human approval gates', () => {
       .post('/runs')
       .set('Cookie', cookie)
       .set('Origin', origin)
-      .send({ input: { message: 'Review my notice', requireApproval: true } });
+      .send({
+        input: {
+          title: 'Review test identity',
+          message: 'Review my notice',
+          requireApproval: true,
+        },
+      });
     expect(created.status).toBe(202);
     const id = created.body.id as string;
     await until(
@@ -173,6 +179,7 @@ describe.skipIf(!uri || !redis)('human approval gates', () => {
       (item: { runId: string }) => item.runId === id,
     );
     expect(approval.proposedAction.message).toBe('Review my notice');
+    expect(approval.title).toBe('Review test identity');
     expect(
       (
         await request(app)
@@ -235,6 +242,12 @@ describe.skipIf(!uri || !redis)('human approval gates', () => {
       'Human corrected notice',
     );
     const record = await approvals.get(approval.id);
+    expect((await runs.get(id))?.state).toMatchObject({
+      title: 'Review test identity',
+      message: 'Review my notice',
+      noticeMessage: 'Human corrected notice',
+    });
+    expect(record?.title).toBe('Review test identity');
     expect(record?.resolvedBy).toBe(signed.body.user.id);
     expect(record?.version).toBe(1);
     const events = await runs.events(id, 0);
@@ -385,6 +398,7 @@ describe.skipIf(!uri || !redis)('human approval gates', () => {
       if (!tuple?.metadata)
         throw new Error('Missing legacy checkpoint fixture');
       for (const field of [
+        'title',
         'requireApproval',
         'noticeMessage',
         'approvalAction',

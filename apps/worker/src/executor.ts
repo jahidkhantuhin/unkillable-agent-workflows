@@ -165,6 +165,7 @@ export async function createExecutor(
             run.execution,
             String(snapshot.config.configurable?.checkpoint_id),
             paused.message,
+            paused.title || paused.message,
           );
           return;
         }

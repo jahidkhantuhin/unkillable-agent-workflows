@@ -63,6 +63,7 @@ export const runSchema = z.object({
 });
 export const approvalSchema = z.object({
   ...documentFields,
+  title: z.string().default(''),
   runId: idSchema,
   nodeId: idSchema,
   version: z.number().int().nonnegative(),

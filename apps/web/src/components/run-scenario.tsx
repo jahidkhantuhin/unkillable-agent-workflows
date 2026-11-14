@@ -35,7 +35,15 @@ export function RunScenario({ state }: { state: unknown }) {
     </span>
   );
 }
-export function runMessage(state: unknown) {
+export function runTitle(state: unknown) {
+  if (
+    state &&
+    typeof state === 'object' &&
+    'title' in state &&
+    typeof state.title === 'string' &&
+    state.title.trim()
+  )
+    return state.title;
   return state &&
     typeof state === 'object' &&
     'message' in state &&

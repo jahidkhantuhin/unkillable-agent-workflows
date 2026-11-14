@@ -9,7 +9,7 @@ import {
 } from '@unkillable/shared';
 import { RunStatus } from './runs-list';
 import { ReliabilityPanel } from './reliability-panel';
-import { RunScenario, runMessage } from './run-scenario';
+import { RunScenario, runTitle } from './run-scenario';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
@@ -115,7 +115,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
           </p>
           <h1 className="mt-3 text-4xl font-semibold">Run timeline</h1>
           <h2 className="mt-5 max-w-3xl break-words text-xl font-semibold">
-            {runMessage(run.state)}
+            {runTitle(run.state)}
           </h2>
           <div className="mt-2">
             <RunScenario state={run.state} />
@@ -127,6 +127,22 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         <RunStatus status={run.status} />
       </div>
       <ReliabilityPanel runId={run.id} />
+      <section className="mt-6 rounded-2xl border border-border p-6">
+        <h2 className="font-medium">Notice content</h2>
+        <p className="mt-3 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+          {String(run.state.message ?? '')}
+        </p>
+        {run.state.approvalAction === 'edit' && (
+          <>
+            <h3 className="mt-5 text-sm font-medium">
+              Approved edited content
+            </h3>
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm">
+              {String(run.state.noticeMessage ?? '')}
+            </p>
+          </>
+        )}
+      </section>
       {run.status === 'waiting_approval' && (
         <div
           role="status"

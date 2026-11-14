@@ -9,7 +9,7 @@ docker compose up -d
 pnpm dev
 ```
 
-Sign in as the configured seeded administrator or an existing approver. On Runs, enter a recognizable test title/message, select Healthy delivery, check **Require human approval**, and start the demo. Prepare and summarize finish; the timeline shows **waiting approval**. No notice has been queued yet.
+Sign in as the configured seeded administrator or an existing approver. On Runs, enter Test title `Review notice test` and Notice content `Please review this local notice`, select Healthy delivery, check **Require human approval**, and start the demo. Prepare and summarize finish; the timeline shows **waiting approval**. No notice has been queued yet.
 
 Open **Approvals**. Each pending card shows its proposed action, original draft, editable content, reasoning, and run link. The inbox refreshes every two seconds. Try three separate runs:
 
@@ -20,6 +20,8 @@ Open **Approvals**. Each pending card shows its proposed action, original draft,
 | Reject               | Enter a reason and select Reject                      | Same run resumes, records the decision, and becomes cancelled without queueing a notice |
 
 Approve original is disabled while the draft is changed, preventing silent loss of edits. Edited approval requires nonempty content up to 500 characters. Rejection requires a nonempty reason up to 1000 characters. The API enforces these rules too. The original test title stays unchanged after editing; inspect noticeMessage in saved state and the outbox payload for approved content.
+
+Test title is an independent run name (up to 200 characters). Notice content is the initial local notice draft (up to 500 characters), stored as message for API compatibility. The Approval Inbox heading uses the title; Draft content uses the notice. Run detail shows the original notice and, after an edit decision, the approved edited content separately. Existing runs/checkpoints/approvals without a title fall back to their original message. Existing message-only API requests remain supported; new requests can send input.title alongside input.message.
 
 While a run waits, start another demo without approval: it should finish normally. Restart the worker while the first waits, then resolve it; its saved interrupt survives. Concurrent reviewers get one successful decision and one conflict. Refresh the inbox after a conflict; the timeline retains the winning decision. Only approvers/admins can read or resolve approvals. Registration still creates a viewer.
 
