@@ -30,6 +30,8 @@ API and worker load the root `.env`. Existing Step 1 installations must add `BET
 
 For a custom API address, set `API_INTERNAL_URL` in `apps/web/.env.local` and update `NEXT_PUBLIC_API_URL` there for the health proxy. Both default to `http://localhost:4000`. The signing secret belongs only in the API environment; never expose it through a `NEXT_PUBLIC_` variable.
 
+The header and navigation receive a server-verified session with the initial page, avoiding a second verification request after hydration. Requests without cookies skip the session API. Session checks are shared only within each server render, not across users/requests; pages remain private and dynamic. Focus refresh still checks current permissions, concurrent refreshes share one request, and a failed or timed-out check offers Retry instead of an indefinite Checking session message. `pnpm dev` still compiles pages on first access after startup; that development compilation can take time even when session verification is ready. See the [Next.js authentication guide](https://nextjs.org/docs/app/guides/authentication) for request-scoped session loading.
+
 ## Authentication and roles (Step 2)
 
 Register at `/register`; accounts start as viewers. Registration accepts name, email, and a password of 12–128 characters; callers cannot supply a role. The seed command creates the local administrator using `SEED_EMAIL`, `SEED_PASSWORD`, `SEED_NAME`, and `SEED_ROLE` from `.env`. Example defaults are **local demo credentials only**: `admin@example.test` / `local-demo-password-change-me`. Set your own values before seeding if preferred. Re-running seed preserves existing passwords and applies the configured role; seeding is disabled in production.

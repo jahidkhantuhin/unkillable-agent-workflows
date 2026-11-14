@@ -3,10 +3,17 @@ import { ThemeProvider, useTheme } from 'next-themes';
 import { Moon, Sun } from 'lucide-react';
 import { Button } from './ui/button';
 import { AuthProvider } from './auth-provider';
-export function Providers({ children }: { children: React.ReactNode }) {
+import type { Identity } from '@unkillable/shared';
+export function Providers({
+  children,
+  initialIdentity,
+}: {
+  children: React.ReactNode;
+  initialIdentity?: Identity | null;
+}) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider initialIdentity={initialIdentity}>{children}</AuthProvider>
     </ThemeProvider>
   );
 }

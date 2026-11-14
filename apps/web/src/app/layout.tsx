@@ -5,20 +5,23 @@ import { Providers, ThemeToggle } from '@/components/providers';
 import { ApiStatus } from '@/components/status';
 import { Navigation } from '@/components/navigation';
 import { UserMenu } from '@/components/user-menu';
+import { serverIdentity } from '@/lib/server-auth';
 import './globals.css';
 export const metadata: Metadata = {
   title: 'Unkillable · Agent Workflows',
   description: 'Durable agent workflows. Human control. Proof of recovery.',
 };
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Public pages still render if the API is starting; the client offers retry.
+  const initialIdentity = await serverIdentity().catch(() => undefined);
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <Providers>
+        <Providers initialIdentity={initialIdentity}>
           <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
             <aside className="border-b border-border p-6 lg:border-r lg:border-b-0">
               <Link

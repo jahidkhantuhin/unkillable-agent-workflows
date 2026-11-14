@@ -1,14 +1,17 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { identitySchema } from '@unkillable/shared';
+import { cache } from 'react';
 export const apiURL =
   process.env.API_INTERNAL_URL ??
   process.env.NEXT_PUBLIC_API_URL ??
   'http://localhost:4000';
-export async function serverIdentity() {
+export const serverIdentity = cache(async () => {
   const cookieStore = await cookies();
+  const cookie = cookieStore.toString();
+  if (!cookie) return null;
   const response = await fetch(`${apiURL}/auth/me`, {
-    headers: { cookie: cookieStore.toString() },
+    headers: { cookie },
     cache: 'no-store',
     signal: AbortSignal.timeout(5000),
   });
@@ -18,4 +21,4 @@ export async function serverIdentity() {
       'Unable to verify workspace access. Check the API and membership.',
     );
   return identitySchema.parse(await response.json());
-}
+});

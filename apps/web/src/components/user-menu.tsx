@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useAuth } from './auth-provider';
 import { Button } from './ui/button';
 export function UserMenu() {
-  const { identity, loading, refresh } = useAuth();
+  const { identity, loading, error: sessionError, refresh } = useAuth();
   const router = useRouter();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,6 +31,17 @@ export function UserMenu() {
   if (loading)
     return (
       <span className="text-xs text-muted-foreground">Checking session…</span>
+    );
+  if (sessionError)
+    return (
+      <div className="flex items-center gap-2">
+        <span role="alert" className="text-xs text-muted-foreground">
+          {sessionError}
+        </span>
+        <Button variant="outline" onClick={() => void refresh()}>
+          Retry
+        </Button>
+      </div>
     );
   if (!identity)
     return (

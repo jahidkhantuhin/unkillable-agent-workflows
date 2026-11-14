@@ -5,41 +5,65 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
 } from 'react';
-import { identitySchema, type Identity } from '@unkillable/shared';
+import { type Identity } from '@unkillable/shared';
+import { createSessionLoader } from '../lib/session-client';
 type AuthState = {
   identity: Identity | null;
   loading: boolean;
+  error: string | null;
   refresh: () => Promise<void>;
 };
 const AuthContext = createContext<AuthState | null>(null);
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [identity, setIdentity] = useState<Identity | null>(null);
-  const [loading, setLoading] = useState(true);
-  const refresh = useCallback(async () => {
-    try {
-      const response = await fetch('/api/backend/auth/me', {
-        cache: 'no-store',
-      });
-      setIdentity(
-        response.ok ? identitySchema.parse(await response.json()) : null,
-      );
-    } catch {
-      setIdentity(null);
-    } finally {
-      setLoading(false);
-    }
+export function AuthProvider({
+  children,
+  initialIdentity,
+}: {
+  children: React.ReactNode;
+  initialIdentity?: Identity | null;
+}) {
+  const [identity, setIdentity] = useState<Identity | null>(
+    initialIdentity ?? null,
+  );
+  const [loading, setLoading] = useState(initialIdentity === undefined);
+  const [error, setError] = useState<string | null>(null);
+  const pending = useRef<Promise<void> | null>(null);
+  const load = useRef(createSessionLoader());
+  const refresh = useCallback(() => {
+    if (pending.current) return pending.current;
+    const request = (async () => {
+      try {
+        setIdentity(await load.current());
+        setError(null);
+      } catch {
+        setIdentity(null);
+        setError('Unable to verify session.');
+      } finally {
+        setLoading(false);
+      }
+    })();
+    pending.current = request;
+    void request.then(() => {
+      pending.current = null;
+    });
+    return request;
   }, []);
   useEffect(() => {
-    void refresh();
+    if (initialIdentity === undefined) void refresh();
+    else {
+      setIdentity(initialIdentity);
+      setLoading(false);
+      setError(null);
+    }
     const check = () => {
       void refresh();
     };
     window.addEventListener('focus', check);
     return () => window.removeEventListener('focus', check);
-  }, [refresh]);
+  }, [refresh, initialIdentity]);
   return (
-    <AuthContext.Provider value={{ identity, loading, refresh }}>
+    <AuthContext.Provider value={{ identity, loading, error, refresh }}>
       {children}
     </AuthContext.Provider>
   );
