@@ -73,6 +73,8 @@ Runs, run timelines, and Dead Letters share color-highlighted scenario names (he
 
 The Test title field names the run and appears first in a larger font, with the smaller highlighted scenario label immediately below and the run ID afterward. The separate Notice content field supplies the draft to review and deliver; approval edits change only that content. Older runs without a separate title continue to display their original message as the title.
 
+Demo controls keep Start demo run right-aligned, alongside a bordered Require human approval checkbox. On smaller screens, the controls wrap below the scenario selector.
+
 **What the worker does:** The API accepts requests and queues jobs. The worker performs the workflow work. Currently, it uses no AI model and sends no emails or payments.
 
 **What happens if it crashes:** A replacement worker picks up the abandoned job and resumes from the last saved checkpoint. The interrupted step may run again; completed, checkpointed steps are preserved. A replacement worker must be started for recovery to happen; automatic process supervision comes in a later step.

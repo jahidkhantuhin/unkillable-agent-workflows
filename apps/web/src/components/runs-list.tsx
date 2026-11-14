@@ -147,37 +147,41 @@ export function RunsList() {
                 before delivery.
               </span>
             </label>
-            <label className="text-xs text-muted-foreground">
-              Local delivery simulation
-              <select
-                name="deliveryMode"
-                aria-label="Local delivery simulation"
-                defaultValue="normal"
-                className="mt-1 block h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground"
-              >
-                <option value="normal">Healthy delivery</option>
-                <option value="retry-once">
-                  Transient failure, then recover
-                </option>
-                <option value="exhaust">
-                  Exhaust retries; recover on manual retry
-                </option>
-                <option value="permanent">
-                  Permanent failure; discard example
-                </option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="requireApproval"
-                className="size-4 accent-emerald-500"
-              />
-              Require human approval
-            </label>
-            <Button type="submit" disabled={pending}>
-              {pending ? 'Queueing…' : 'Start demo run'}
-            </Button>
+            <div className="flex w-full flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <label className="min-w-0 text-xs text-muted-foreground">
+                Local delivery simulation
+                <select
+                  name="deliveryMode"
+                  aria-label="Local delivery simulation"
+                  defaultValue="normal"
+                  className="mt-2 block h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground"
+                >
+                  <option value="normal">Healthy delivery</option>
+                  <option value="retry-once">
+                    Transient failure, then recover
+                  </option>
+                  <option value="exhaust">
+                    Exhaust retries; recover on manual retry
+                  </option>
+                  <option value="permanent">
+                    Permanent failure; discard example
+                  </option>
+                </select>
+              </label>
+              <div className="flex flex-wrap items-center justify-end gap-3 xl:shrink-0">
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-background px-4 py-2 text-sm transition-colors hover:bg-muted/40 has-[:checked]:border-emerald-500/50 has-[:checked]:bg-emerald-500/10">
+                  <input
+                    type="checkbox"
+                    name="requireApproval"
+                    className="size-4 shrink-0 cursor-pointer accent-emerald-500"
+                  />
+                  Require human approval
+                </label>
+                <Button type="submit" disabled={pending}>
+                  {pending ? 'Queueing…' : 'Start demo run'}
+                </Button>
+              </div>
+            </div>
           </form>
         ) : (
           <p className="mt-5 text-sm text-muted-foreground">
