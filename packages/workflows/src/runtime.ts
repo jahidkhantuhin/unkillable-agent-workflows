@@ -1,4 +1,12 @@
-import { StateGraph, StateSchema, START, END } from '@langchain/langgraph';
+import {
+  StateGraph,
+  StateSchema,
+  START,
+  END,
+  interrupt,
+  Command,
+} from '@langchain/langgraph';
+export { Command };
 import { MongoDBSaver } from '@langchain/langgraph-checkpoint-mongodb';
 import { MongoClient } from 'mongodb-checkpoint-driver';
 import {
@@ -6,6 +14,7 @@ import {
   demoNodeSchema,
   type DemoState,
   type DemoNode,
+  approvalDecisionSchema,
 } from '@unkillable/shared';
 type Hooks = {
   runNode?: (
@@ -96,9 +105,42 @@ export function buildDemoGraph(
       retryPolicy: { maxAttempts: 1 },
     })
     .addNode('complete', node('complete'), { retryPolicy: { maxAttempts: 1 } })
+    .addNode(
+      'approval',
+      async (
+        state: DemoState,
+        config: { configurable?: Record<string, unknown> },
+      ) => {
+        await hooks.stepStarted(
+          String(config.configurable?.thread_id),
+          'approval',
+        );
+        // Keep interrupt outside the retry wrapper: GraphInterrupt is control flow.
+        const decision = approvalDecisionSchema.parse(
+          interrupt({ message: state.message }),
+        );
+        return {
+          approvalAction: decision.action,
+          noticeMessage:
+            decision.action === 'edit'
+              ? decision.payload.message
+              : state.message,
+          completed: [...state.completed, 'approval' as const],
+        };
+      },
+    )
     .addEdge(START, 'prepare')
     .addEdge('prepare', 'summarize')
-    .addEdge('summarize', 'complete')
+    .addConditionalEdges(
+      'summarize',
+      (state) => (state.requireApproval ? 'approval' : 'complete'),
+      ['approval', 'complete'],
+    )
+    .addConditionalEdges(
+      'approval',
+      (state) => (state.approvalAction === 'reject' ? END : 'complete'),
+      [END, 'complete'],
+    )
     .addEdge('complete', END)
     .compile({ checkpointer });
 }

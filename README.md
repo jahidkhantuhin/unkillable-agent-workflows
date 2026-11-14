@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–4 provide authentication/RBAC, durable execution, configurable retries, transactional effect receipts/outbox, and an admin Dead Letters page. Runs survive killed workers, save MongoDB checkpoints, and expose live/replayable timelines. The demo delivers a stored local notice; no AI model, email, or payment is used. Approvals, external adapters, compensation, and chaos controls arrive in later steps. No chaos-report numbers are claimed yet.
+Steps 1–5 provide authentication/RBAC, durable execution, configurable retries, transactional effect receipts/outbox, admin Dead Letters management, and human approval gates. Runs can wait for a human, survive worker restarts, and expose live/replayable timelines. The demo delivers a stored local notice; no AI model, email, or payment is used. External adapters, compensation, and chaos controls arrive in later steps. No chaos-report numbers are claimed yet.
 
 ## Quickstart
 
@@ -34,13 +34,13 @@ For a custom API address, set `API_INTERNAL_URL` in `apps/web/.env.local` and up
 
 Register at `/register`; accounts start as viewers. Registration accepts name, email, and a password of 12–128 characters; callers cannot supply a role. The seed command creates the local administrator using `SEED_EMAIL`, `SEED_PASSWORD`, `SEED_NAME`, and `SEED_ROLE` from `.env`. Example defaults are **local demo credentials only**: `admin@example.test` / `local-demo-password-change-me`. Set your own values before seeding if preferred. Re-running seed preserves existing passwords and applies the configured role; seeding is disabled in production.
 
-| Role     | Workspace access                                                                                   |
-| -------- | -------------------------------------------------------------------------------------------------- |
-| viewer   | Runs and Workflows                                                                                 |
-| approver | Viewer access plus starting demo runs and Approvals; permission to resolve future approval actions |
-| admin    | All sections, including Chaos and Analytics                                                        |
+| Role     | Workspace access                                                      |
+| -------- | --------------------------------------------------------------------- |
+| viewer   | Runs and Workflows                                                    |
+| approver | Viewer access plus starting demo runs and reading/resolving approvals |
+| admin    | All sections, including Chaos and Analytics                           |
 
-Step 2 controls access to these sections; it does not implement their later workflow actions. Navigation hides unauthorized sections, protected pages recheck the session on the server, and API permission checks read the current membership on every request. Role changes do not require re-login; the navigation refreshes on window focus. Missing memberships fail closed. This is one local workspace (`workspaceId=local`), not a multi-tenant implementation.
+Step 2 established section access; Step 5 implements approval actions. Navigation hides unauthorized sections, protected pages recheck the session on the server, and API permission checks read the current membership on every request. Role changes do not require re-login; the navigation refreshes on window focus. Missing memberships fail closed. This is one local workspace (`workspaceId=local`), not a multi-tenant implementation.
 
 API endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, and `GET /auth/access/:section` (a permission check, not workflow execution). Browser requests use the same-origin `/api/backend/auth/*` proxy, which forwards HTTP-only cookies. API responses do not expose session tokens. Better Auth 1.7.23 hashes passwords and stores sessions in MongoDB. Sessions have a fixed seven-day lifetime, no cookie cache, and server-side revocation on logout; production cookies are Secure, all session cookies are HttpOnly/SameSite=Lax. Auth mutations require trusted origins, native auth rate limits use the database, and logs redact cookies and authorization headers. Email verification and password recovery are not configured in this local showcase; no email is sent.
 
@@ -52,12 +52,18 @@ The app bootstraps indexes before accepting API traffic; `pnpm db:migrate` repea
 | sessions, accounts, verifications, authRateLimits | Better Auth session, credential, verification, and rate-limit storage |
 | workflowDefinitions                               | Versioned workflow structure                                          |
 | runs, runEvents                                   | Execution state and append-only event history                         |
-| approvals                                         | Proposed decisions and future resolution records                      |
+| approvals                                         | Pending proposals and immutable reviewer decisions                    |
 | idempotencyKeys                                   | Committed effect results returned unchanged on replay                 |
 | deadLetters, outbox                               | Failed-work context and transactional outbound intents                |
 | nodeAttempts, localDeliveries                     | Durable retry budgets/deadlines and the local notification sink       |
 
 The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, memberships, event sequence numbers, and outbox keys. Shared Zod schemas define every document and the AG-UI-shaped run-event union; application repositories validate writes and reads. Better Auth owns its MongoDB adapter and auth-record lifecycle. Execution now uses transactional run/event writes; the unique index alone does not claim exactly-once external effects.
+
+## Human approval gates (Step 5)
+
+On Runs, enable **Require human approval** before starting a new demo. Prepare and summarize finish, then the run pauses before its local notice is queued. The worker releases its slot so other jobs can run. Approvers/admins open **Approvals** to inspect the proposal and reasoning, approve the original, approve an edited draft, or reject with a reason. Decisions and reviewer identity appear on the live timeline. Approve/edit resumes the same saved graph; reject cancels without delivery. The inbox refreshes every two seconds; concurrent decisions resolve once. New version 3 runs default to no gate, so Step 4 scenarios still work unchanged. No new environment variables.
+
+See [docs/STEP-5.md](docs/STEP-5.md) for the three action walkthroughs, API bodies, crash/outage recovery, permission rules, and verification commands. These use native [LangGraph interrupt/resume](https://docs.langchain.com/oss/javascript/langgraph/interrupts), not a waiting worker loop. Rejection is not a dead letter; resolved decisions remain immutable.
 
 ## Durable demo runs (Step 3)
 
@@ -71,7 +77,7 @@ The test title (the entered demo message) appears first in a larger font, with t
 
 **What happens if it crashes:** A replacement worker picks up the abandoned job and resumes from the last saved checkpoint. The interrupted step may run again; completed, checkpointed steps are preserved. A replacement worker must be started for recovery to happen; automatic process supervision comes in a later step.
 
-Sign in as the seeded admin, open **Runs**, enter a message, choose a delivery scenario, and choose **Start demo run**. Approvers can start runs too; viewers can inspect them. The nodes are `prepare → summarize → complete`, with a configurable delay so progress is visible. Workflow version 2 queues one local notice at complete; existing version 1 runs remain pure. No model, payment, email, or external action is called. The list refreshes automatically; each detail page shows the timeline, checkpointed steps, saved state, reconnect status, recovery events, effect receipts, and outbox deliveries.
+Sign in as the seeded admin, open **Runs**, enter a message, choose a delivery scenario, and choose **Start demo run**. Approvers can start runs too; viewers can inspect them. The nodes are `prepare → summarize → complete`, with a configurable delay so progress is visible. Workflow versions 2 and 3 queue one local notice at complete; version 3 adds the optional approval gate and existing version 1 runs remain pure. No model, payment, email, or external action is called. The list refreshes automatically; each detail page shows the timeline, checkpointed steps, saved state, reconnect status, recovery events, effect receipts, and outbox deliveries.
 
 `POST /runs` accepts `{"input":{"message":"Keep this run alive"}}` and returns HTTP 202. The optional workflowId is fixed to `durability-demo`. `GET /runs` supports limit (1–100) and status; `GET /runs/:id` returns state. Routes require a session; creation also requires a trusted Origin and runs:create permission. All runs are in the one local workspace. The server generates run UUIDs; clients never choose LangGraph thread IDs.
 
@@ -79,7 +85,7 @@ The API saves the queued run/event transactionally, then adds a BullMQ job with 
 
 `GET /runs/:id/events` streams append-only MongoDB events with numeric per-run SSE IDs. Last-Event-ID resumes strictly after that sequence; a fresh client can use ?after=N. Invalid/ahead cursors are rejected. Completed runs replay through the same endpoint. Heartbeats and session rechecks occur every 15 seconds; writes respect backpressure, headers disable buffering, and disconnects stop polling. The Next.js proxy forwards the streaming body and cursor header. EventSource reconnects automatically; the UI deduplicates sequences and reconstructs history after refresh.
 
-New optional settings in .env.example: RUN_QUEUE_NAME=workflow-runs, WORKER_LOCK_DURATION_MS=15000, WORKER_STALLED_INTERVAL_MS=5000, WORKER_MAX_STALLED_COUNT=3, DEMO_NODE_DELAY_MS=1500. API and worker must share a queue name. Locks renew every half lock duration; replacement workers recover expired locks during stalled scans. Exhausted stalled jobs become failed runs. Checkpoints are retained without TTL. There is no supervisor/kill button yet. Reserved approval, compensation, and cancellation states gain their behavior in later steps.
+New optional settings in .env.example: RUN_QUEUE_NAME=workflow-runs, WORKER_LOCK_DURATION_MS=15000, WORKER_STALLED_INTERVAL_MS=5000, WORKER_MAX_STALLED_COUNT=3, DEMO_NODE_DELAY_MS=1500. API and worker must share a queue name. Locks renew every half lock duration; replacement workers recover expired locks during stalled scans. Exhausted stalled jobs become failed runs. Checkpoints are retained without TTL. There is no supervisor/kill button yet. Step 5 uses waiting_approval and cancelled for review/rejection; compensation gains behavior in a later step.
 
 See [docs/STEP-3.md](docs/STEP-3.md) for boundaries and verification. Shared Node-only run/event persistence lives in `packages/storage`; browser code only imports shared contracts.
 

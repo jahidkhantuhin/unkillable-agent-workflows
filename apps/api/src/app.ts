@@ -12,6 +12,8 @@ import type { RunService } from './services/runs';
 import { runsRoutes } from './routes/runs';
 import { deadLetterRoutes } from './routes/dead-letters';
 import { DeadLetterService } from './services/dead-letters';
+import { ApprovalService } from './services/approvals';
+import { approvalRoutes } from './routes/approvals';
 export function createApp(
   deps: HealthDependencies,
   origins = ['http://localhost:3000'],
@@ -44,6 +46,14 @@ export function createApp(
   app.use(healthRoutes(deps));
   if (authService) app.use('/auth', authRoutes(authService, origins));
   if (authService && runService) {
+    app.use(
+      '/approvals',
+      approvalRoutes(
+        new ApprovalService(runService.repository.approvals(), runService),
+        authService,
+        origins,
+      ),
+    );
     app.use('/runs', runsRoutes(runService, authService, origins));
     app.use(
       '/dead-letters',

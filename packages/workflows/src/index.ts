@@ -9,6 +9,11 @@ export const demoDefinition = {
     { id: 'prepare', label: 'Prepare input', kind: 'task' },
     { id: 'summarize', label: 'Summarize', kind: 'task' },
     {
+      id: 'approval',
+      label: 'Review local notice (optional)',
+      kind: 'approval',
+    },
+    {
       id: 'complete',
       label: 'Complete and queue local notice',
       kind: 'effect',
@@ -17,5 +22,7 @@ export const demoDefinition = {
   edges: [
     { source: 'prepare', target: 'summarize' },
     { source: 'summarize', target: 'complete' },
+    { source: 'summarize', target: 'approval' },
+    { source: 'approval', target: 'complete' },
   ],
 } as const;

@@ -1,4 +1,4 @@
-import { createDemoRuntime } from '@unkillable/workflows/runtime';
+import { createDemoRuntime, Command } from '@unkillable/workflows/runtime';
 import { RunRepository } from '@unkillable/storage';
 import { retryOperation } from '@unkillable/workflows/retry';
 import {
@@ -21,6 +21,7 @@ export async function createExecutor(
   policies: Partial<Record<DemoNode, RetryPolicy>> = {},
 ) {
   const reliability = repository.reliability();
+  const approvals = repository.approvals();
   const active = new Map<string, number>();
   async function recordCheckpoint(
     runId: string,
@@ -84,7 +85,7 @@ export async function createExecutor(
                 runId + ':complete:notice',
                 async (transaction) => {
                   const receipt = await transaction.enqueue('notification', {
-                    message: run.state.message,
+                    message: run.state.noticeMessage || run.state.message,
                   });
                   return { receipt };
                 },
@@ -112,6 +113,8 @@ export async function createExecutor(
         return;
       active.set(run.id, run.execution);
       try {
+        const approval = await approvals.forRun(runId);
+        if (run.status === 'waiting_approval') return;
         if (run.workflowId !== 'durability-demo')
           throw new Error('Unsupported workflow');
         const config = {
@@ -141,18 +144,39 @@ export async function createExecutor(
             value: { checkpointId: saved.checkpoint.id },
           });
         }
-        const result = demoStateSchema.parse(
-          await runtime.graph.invoke(
-            saved ? null : demoStateSchema.parse(run.state),
-            config,
-          ),
+        const before = saved ? await runtime.graph.getState(config) : null;
+        const interrupted = before?.tasks.some(
+          (task) => task.interrupts?.length,
         );
+        const input =
+          interrupted && approval?.decision
+            ? new Command<unknown, Partial<DemoState>, DemoNode | '__start__'>({
+                resume: approval.decision,
+              })
+            : saved
+              ? null
+              : demoStateSchema.parse(run.state);
+        const output = await runtime.graph.invoke(input, config);
+        const snapshot = await runtime.graph.getState(config);
+        if (snapshot.tasks.some((task) => task.interrupts?.length)) {
+          const paused = demoStateSchema.parse(snapshot.values);
+          await approvals.request(
+            run.id,
+            run.execution,
+            String(snapshot.config.configurable?.checkpoint_id),
+            paused.message,
+          );
+          return;
+        }
+        const result = demoStateSchema.parse(output);
+        const outcome =
+          result.approvalAction === 'reject' ? 'cancelled' : 'succeeded';
         await repository.append(
           run.id,
-          { type: 'RUN_FINISHED', outcome: 'succeeded' },
+          { type: 'RUN_FINISHED', outcome },
           {
             key: `run:finished:${run.execution}`,
-            status: 'succeeded',
+            status: outcome,
             state: result,
             expectedExecution: run.execution,
           },

@@ -14,7 +14,7 @@ import { RunScenario } from './run-scenario';
 export function RunStatus({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex rounded-full border px-3 py-1 text-xs ${status === 'succeeded' ? 'border-emerald-500/40 text-emerald-500' : status === 'failed' ? 'border-red-500/40 text-red-500' : 'border-border text-muted-foreground'}`}
+      className={`inline-flex rounded-full border px-3 py-1 text-xs ${status === 'succeeded' ? 'border-emerald-500/40 text-emerald-500' : status === 'failed' ? 'border-red-500/40 text-red-500' : status === 'waiting_approval' ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'border-border text-muted-foreground'}`}
     >
       {status.replaceAll('_', ' ')}
     </span>
@@ -72,6 +72,7 @@ export function RunsList() {
         input: {
           message: form.get('message'),
           deliveryMode: form.get('deliveryMode'),
+          requireApproval: form.get('requireApproval') === 'on',
         },
       });
       const response = await fetch('/api/backend/runs', {
@@ -143,6 +144,14 @@ export function RunsList() {
                   Permanent failure; discard example
                 </option>
               </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="requireApproval"
+                className="size-4 accent-emerald-500"
+              />
+              Require human approval
             </label>
             <Button type="submit" disabled={pending}>
               {pending ? 'Queueing…' : 'Start demo run'}

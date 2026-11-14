@@ -13,6 +13,16 @@ import { RunScenario, runMessage } from './run-scenario';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
+  if (event.type === 'CUSTOM' && event.name === 'approval.requested')
+    return 'Human approval requested';
+  if (event.type === 'CUSTOM' && event.name === 'approval.resolved') {
+    const decision = event.value.decision;
+    const action =
+      decision && typeof decision === 'object' && 'action' in decision
+        ? String(decision.action)
+        : 'resolved';
+    return `Approval: ${action} · reviewer ${String(event.value.actorId)}`;
+  }
   if (event.type === 'CUSTOM')
     if (event.name === 'retry.scheduled')
       return `${String(event.value.nodeId)} retry ${String(event.value.nextAttempt)} in ${String(event.value.delayMs)} ms`;
@@ -67,6 +77,15 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
                 error: undefined,
               }
             : {}),
+          ...(event.type === 'CUSTOM' && event.name === 'approval.requested'
+            ? { status: 'waiting_approval' as const }
+            : {}),
+          ...(event.type === 'CUSTOM' && event.name === 'approval.resolved'
+            ? {
+                status: 'queued' as const,
+                execution: Number(event.value.execution),
+              }
+            : {}),
         };
       });
     });
@@ -108,6 +127,22 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         <RunStatus status={run.status} />
       </div>
       <ReliabilityPanel runId={run.id} />
+      {run.status === 'waiting_approval' && (
+        <div
+          role="status"
+          className="mt-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 text-sm"
+        >
+          <p className="font-semibold">Waiting for human approval</p>
+          <p className="mt-2">
+            The worker is free to process other runs. An approver or
+            administrator can review the draft in the{' '}
+            <Link href="/approvals" className="underline">
+              Approval Inbox
+            </Link>
+            .
+          </p>
+        </div>
+      )}
       {run.status === 'failed' && (
         <Link
           href="/dead-letters"
@@ -117,7 +152,10 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         </Link>
       )}
       <div className="mt-8 flex flex-wrap gap-3">
-        {['prepare', 'summarize', 'complete'].map((step) => (
+        {(run.state.requireApproval
+          ? ['prepare', 'summarize', 'approval', 'complete']
+          : ['prepare', 'summarize', 'complete']
+        ).map((step) => (
           <span
             key={step}
             className={`rounded-lg border px-4 py-3 text-sm ${events.some((event) => event.type === 'STEP_FINISHED' && event.stepName === step) ? 'border-emerald-500/40 text-emerald-500' : 'border-border text-muted-foreground'}`}

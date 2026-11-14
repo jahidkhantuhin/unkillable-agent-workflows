@@ -6,7 +6,7 @@ export default function Home() {
     <>
       <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
         <span className="size-1.5 rounded-full bg-emerald-500" />
-        STEP 04 / RELIABILITY LAYER
+        STEP 05 / HUMAN APPROVAL GATES
       </div>
       <h1 className="max-w-3xl text-5xl font-semibold leading-[1.08] tracking-tight md:text-7xl">
         Agents that act.
@@ -60,7 +60,7 @@ export default function Home() {
           ))}
         </div>
         <p className="mt-5 text-xs text-muted-foreground">
-          Platform roadmap preview · Approvals arrive in a later step.
+          Durable runs and human approval are ready to try in the workspace.
         </p>
       </section>
       <section className="mt-10 grid gap-8 md:grid-cols-2">
@@ -88,11 +88,12 @@ export default function Home() {
             CURRENT BUILD
           </p>
           <h2 className="mt-3 text-xl font-medium">
-            Your first durable workflow is ready.
+            Your workflow can wait for a human.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Sign in, start the deterministic demo, and follow each checkpoint on
-            its live timeline. Completed work survives worker restarts.
+            Sign in, enable human approval on a demo, and review its local
+            notice in the Approval Inbox. Approve, edit, or reject while other
+            runs keep moving.
           </p>
         </div>
       </section>

@@ -288,6 +288,7 @@ export class ReliabilityRepository {
         if (
           !run ||
           run.execution !== execution ||
+          run.status === 'waiting_approval' ||
           [
             'succeeded',
             'failed',

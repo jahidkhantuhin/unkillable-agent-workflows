@@ -19,6 +19,7 @@ import {
   type EventInput,
 } from '@unkillable/shared';
 import { ReliabilityRepository } from './reliability';
+import { ApprovalRepository } from './approvals';
 type Stored = Document & { _id: string };
 export interface RunStore {
   create(userId: string, input: DemoInput): Promise<Run>;
@@ -27,6 +28,9 @@ export interface RunStore {
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  approvals() {
+    return new ApprovalRepository(this.client, this.db);
+  }
   reliability() {
     return new ReliabilityRepository(this.client, this.db);
   }
@@ -207,3 +211,4 @@ export type RunUpdate = {
   allowTerminal?: boolean;
 };
 export * from './reliability';
+export * from './approvals';

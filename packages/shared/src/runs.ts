@@ -8,13 +8,19 @@ export const deliveryModeSchema = z.enum([
   'exhaust',
   'permanent',
 ]);
-export const demoWorkflowVersion = 2;
+export const demoWorkflowVersion = 3;
 export const demoInputSchema = z.strictObject({
   message: z.string().trim().min(1).max(500),
   deliveryMode: deliveryModeSchema.optional(),
+  requireApproval: z.boolean().optional(),
 });
 export type DemoInput = z.infer<typeof demoInputSchema>;
-export const demoNodeSchema = z.enum(['prepare', 'summarize', 'complete']);
+export const demoNodeSchema = z.enum([
+  'prepare',
+  'summarize',
+  'approval',
+  'complete',
+]);
 export const demoStateSchema = z.object({
   message: z.string(),
   normalized: z.string().default(''),
@@ -22,6 +28,11 @@ export const demoStateSchema = z.object({
   result: z.string().default(''),
   completed: z.array(demoNodeSchema).default([]),
   deliveryMode: deliveryModeSchema.default('normal'),
+  requireApproval: z.boolean().default(false),
+  noticeMessage: z.string().default(''),
+  approvalAction: z
+    .enum(['pending', 'approve', 'edit', 'reject'])
+    .default('pending'),
 });
 export type DemoState = z.infer<typeof demoStateSchema>;
 export type DemoNode = z.infer<typeof demoNodeSchema>;
@@ -39,8 +50,13 @@ export const workerConfigSchema = runQueueConfigSchema.extend({
   DEMO_NODE_DELAY_MS: z.coerce.number().int().min(0).max(10000).default(1500),
   NODE_RETRY_POLICIES: nodePolicyOverridesSchema.refine(
     (value) =>
-      Object.keys(value).every((key) => demoNodeSchema.safeParse(key).success),
-    { message: 'Retry policy keys must name demo nodes' },
+      Object.keys(value).every((key) =>
+        ['prepare', 'summarize', 'complete'].includes(key),
+      ),
+    {
+      message:
+        'Retry policy keys must name task nodes: prepare, summarize, complete',
+    },
   ),
 });
 export const createRunSchema = z.strictObject({

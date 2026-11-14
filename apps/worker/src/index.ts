@@ -12,6 +12,7 @@ import {
 import {
   RunRepository,
   bootstrapReliabilityIndexes,
+  approvalIndexes,
 } from '@unkillable/storage';
 import { createExecutor } from './executor';
 const config = {
@@ -24,6 +25,8 @@ const mongo = new MongoClient(config.MONGODB_URI, {
 });
 await mongo.connect();
 await bootstrapReliabilityIndexes(mongo.db());
+for (const [name, indexes] of Object.entries(approvalIndexes))
+  await mongo.db().collection(name).createIndexes(indexes);
 const repository = new RunRepository(mongo);
 const reliability = repository.reliability();
 const executor = await createExecutor(
@@ -106,6 +109,7 @@ const maintenance = setInterval(() => {
       if (
         run &&
         !terminalStatuses.includes(run.status) &&
+        run.status !== 'waiting_approval' &&
         run.execution === Number(job.data.execution ?? 0)
       )
         await recordFailedJob(job, new Error(job.failedReason));

@@ -41,10 +41,11 @@ describe.skipIf(!uri || !redis)(
     afterAll(async () => {
       for (const child of children)
         if (child.exitCode === null && child.signalCode === null) {
-          child.kill('SIGKILL');
-          await new Promise<void>((resolve) =>
+          const exited = new Promise<void>((resolve) =>
             child.once('exit', () => resolve()),
           );
+          child.kill('SIGKILL');
+          await exited;
         }
       if (queue) {
         await queue.obliterate({ force: true });
@@ -116,7 +117,9 @@ describe.skipIf(!uri || !redis)(
         (events) =>
           events.some(
             (event) =>
-              event.type === 'STEP_STARTED' && event.stepName === 'summarize',
+              event.type === 'CUSTOM' &&
+              event.name === 'node.attempt' &&
+              event.value.nodeId === 'summarize',
           ),
       );
       const checkpoint = await db
@@ -132,7 +135,13 @@ describe.skipIf(!uri || !redis)(
       const result = await until(
         () => repository.get(run.id),
         (value) => value?.status === 'succeeded',
-      );
+      ).catch(async (error: Error) => {
+        const current = await repository.get(run.id);
+        const job = await queue.getJob(run.id);
+        throw new Error(
+          `${error.message}; run=${current?.status}; error=${current?.error ?? 'none'}; job=${await job?.getState()}; failedReason=${job?.failedReason ?? 'none'}; worker logs=${logs}`,
+        );
+      });
       expect(result?.state.completed).toEqual([
         'prepare',
         'summarize',
