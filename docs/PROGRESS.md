@@ -95,3 +95,13 @@ Verification performed locally:
 - CI integration selection includes the new reliability suite; no remote CI result is claimed. The pre-push hook continues to run `pnpm check`; integration tests remain a separate local command and a CI check.
 
 New optional environment variable: `NODE_RETRY_POLICIES={}`; defaults require no local .env changes. Documented in .env.example and STEP-4.md. No dependencies added. No Git commands, commits, or pushes performed. Step 5 has not started; awaiting review and continuation.
+
+### Step 4 follow-up: identifiable test scenarios
+
+Added shared color-highlighted scenario labels to every Runs list entry, the run timeline header, and Dead Letters cards. Healthy delivery is green, transient recovery blue, exhausted retries amber, and permanent failure rose. Labels remain separate from execution status, so a recovered exhausted-retry test keeps its scenario name. The entered demo message is prominent on all three views; IDs remain available for precise identification. Older runs without a delivery mode default to Healthy delivery. No new environment variables or dependencies.
+
+Verification: `pnpm lint`, web typecheck, and web production build pass. This presentation-only follow-up was not rechecked in the browser. No Git commands were run; Step 5 remains unstarted.
+
+Title hierarchy follow-up (corrected per user clarification): the test title (entered demo message) appears first in a larger, semibold font on Runs, run timelines, and Dead Letters. The smaller highlighted scenario label sits immediately underneath, before the run ID. `pnpm lint` and web typecheck pass; browser verification was not repeated for this styling change. No new environment variables or Git commands.
+
+Rendered-layout verification follow-up: rebuilt the web production output successfully, then opened a fresh browser view of the existing development app at localhost:3000/runs. Confirmed the retained Fourth run entry renders its test title before Permanent failure; discard example and its run ID. The earlier screenshot showed the older ordering; the exact cause of that stale view was not established. No source layout changes or Git commands were needed.

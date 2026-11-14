@@ -63,6 +63,10 @@ The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, 
 
 Step 4 extends these runs with retries and a local outbox; see [docs/STEP-4.md](docs/STEP-4.md) for the four test scenarios, effect guarantees, admin Dead Letters actions, and per-node `NODE_RETRY_POLICIES` configuration.
 
+Runs, run timelines, and Dead Letters share color-highlighted scenario names (healthy, transient recovery, exhausted retries, permanent failure). Each also shows the entered demo message so individual tests are easy to identify independently of their execution status.
+
+The test title (the entered demo message) appears first in a larger font, with the smaller highlighted scenario label immediately below and the run ID afterward.
+
 **What the worker does:** The API accepts requests and queues jobs. The worker performs the workflow work. Currently, it uses no AI model and sends no emails or payments.
 
 **What happens if it crashes:** A replacement worker picks up the abandoned job and resumes from the last saved checkpoint. The interrupted step may run again; completed, checkpointed steps are preserved. A replacement worker must be started for recovery to happen; automatic process supervision comes in a later step.

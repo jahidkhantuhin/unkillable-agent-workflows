@@ -9,6 +9,7 @@ import {
 } from '@unkillable/shared';
 import { RunStatus } from './runs-list';
 import { ReliabilityPanel } from './reliability-panel';
+import { RunScenario, runMessage } from './run-scenario';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
@@ -94,6 +95,12 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
             DURABILITY DEMO
           </p>
           <h1 className="mt-3 text-4xl font-semibold">Run timeline</h1>
+          <h2 className="mt-5 max-w-3xl break-words text-xl font-semibold">
+            {runMessage(run.state)}
+          </h2>
+          <div className="mt-2">
+            <RunScenario state={run.state} />
+          </div>
           <p className="mt-3 break-all font-mono text-xs text-muted-foreground">
             {run.id}
           </p>

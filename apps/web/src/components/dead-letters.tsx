@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { deadLetterDTOSchema, type DeadLetterDTO } from '@unkillable/shared';
 import { Button } from './ui/button';
+import { RunScenario, runMessage } from './run-scenario';
 export function DeadLetters() {
   const [letters, setLetters] = useState<DeadLetterDTO[]>([]);
   const [error, setError] = useState('');
@@ -106,9 +107,15 @@ export function DeadLetters() {
             >
               <div className="flex flex-wrap justify-between gap-4">
                 <div>
-                  <h2 className="font-medium">
-                    {letter.nodeId} · {letter.error.code}
+                  <h2 className="break-words text-lg font-semibold">
+                    {runMessage(letter.context.state) || 'Durability demo'}
                   </h2>
+                  <div className="mt-2">
+                    <RunScenario state={letter.context.state} />
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {letter.nodeId} · {letter.error.code}
+                  </p>
                   <Link
                     href={`/runs/${letter.runId}`}
                     className="mt-2 block break-all font-mono text-xs text-muted-foreground underline"

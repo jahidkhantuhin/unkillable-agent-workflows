@@ -10,6 +10,7 @@ import {
 } from '@unkillable/shared';
 import { Button } from './ui/button';
 import { useAuth } from './auth-provider';
+import { RunScenario } from './run-scenario';
 export function RunStatus({ status }: { status: string }) {
   return (
     <span
@@ -178,12 +179,14 @@ export function RunsList() {
                   className="flex flex-wrap items-center justify-between gap-4 p-6 hover:bg-muted/40"
                 >
                   <div>
-                    <p className="text-sm font-medium">Durability demo</p>
+                    <h2 className="break-words text-lg font-semibold">
+                      {String(run.state.message ?? '')}
+                    </h2>
+                    <div className="mt-2">
+                      <RunScenario state={run.state} />
+                    </div>
                     <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
                       {run.id}
-                    </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {String(run.state.message ?? '')}
                     </p>
                   </div>
                   <RunStatus status={run.status} />
