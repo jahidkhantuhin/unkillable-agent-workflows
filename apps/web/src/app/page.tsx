@@ -6,7 +6,7 @@ export default function Home() {
     <>
       <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
         <span className="size-1.5 rounded-full bg-emerald-500" />
-        STEP 05 / HUMAN APPROVAL GATES
+        STEP 06 / SUPPORT TICKET ROUTER
       </div>
       <h1 className="max-w-3xl text-5xl font-semibold leading-[1.08] tracking-tight md:text-7xl">
         Agents that act.
@@ -88,12 +88,12 @@ export default function Home() {
             CURRENT BUILD
           </p>
           <h2 className="mt-3 text-xl font-medium">
-            Your workflow can wait for a human.
+            Support tickets with human control.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Sign in, enable human approval on a demo, and review its local
-            notice in the Approval Inbox. Approve, edit, or reject while other
-            runs keep moving.
+            Open Runs and start a New ticket. Review the proposed reply and fake
+            refund, then approve, edit, or reject. Replies stay in local
+            Mailpit.
           </p>
         </div>
       </section>

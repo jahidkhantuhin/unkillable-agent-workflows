@@ -19,6 +19,17 @@ const scenarios = {
   },
 };
 export function RunScenario({ state }: { state: unknown }) {
+  if (
+    state &&
+    typeof state === 'object' &&
+    'kind' in state &&
+    state.kind === 'support-ticket'
+  )
+    return (
+      <span className="inline-flex rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-700 dark:text-sky-400">
+        Support ticket
+      </span>
+    );
   const mode =
     state && typeof state === 'object' && 'deliveryMode' in state
       ? state.deliveryMode

@@ -4,7 +4,13 @@ import {
   reliabilityDetailsSchema,
   type ReliabilityDetails,
 } from '@unkillable/shared';
-export function ReliabilityPanel({ runId }: { runId: string }) {
+export function ReliabilityPanel({
+  runId,
+  support = false,
+}: {
+  runId: string;
+  support?: boolean;
+}) {
   const [details, setDetails] = useState<ReliabilityDetails | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -39,8 +45,9 @@ export function ReliabilityPanel({ runId }: { runId: string }) {
     <section className="mt-6 rounded-2xl border border-border p-6">
       <h2 className="font-medium">Effect receipts and outbox</h2>
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-        Local MongoDB notice sink only. No email or payment is sent. Receipts
-        and deliveries retain stable keys across retries.
+        {support
+          ? 'Refunds are fake MongoDB ledger entries. Email is captured only by local Mailpit. Stable keys and Message-IDs protect retries.'
+          : 'Local MongoDB notice sink only. No email or payment is sent. Receipts and deliveries retain stable keys across retries.'}
       </p>
       {error && (
         <p role="alert" className="mt-3 text-xs text-red-500">
@@ -56,6 +63,27 @@ export function ReliabilityPanel({ runId }: { runId: string }) {
             </p>
           </div>
           <ul className="mt-4 space-y-3">
+            {details.refunds.map((refund) => (
+              <li
+                key={refund.id}
+                className="rounded-lg border border-emerald-500/30 p-4 text-sm"
+              >
+                Fake refund: USD {(refund.amountCents / 100).toFixed(2)}
+                <p className="mt-2 break-all font-mono text-xs">{refund.id}</p>
+              </li>
+            ))}
+            {details.emails.map((email) => (
+              <li
+                key={email.id}
+                className="rounded-lg border border-sky-500/30 p-4 text-sm"
+              >
+                Mailpit email: {email.status} · {email.payload.to}
+                <p className="mt-2 break-all text-xs">{email.payload.text}</p>
+                <p className="mt-2 break-all font-mono text-xs">
+                  {email.payload.messageId}
+                </p>
+              </li>
+            ))}
             {details.outbox.map((record) => (
               <li key={record.id} className="rounded-lg bg-muted p-4 text-xs">
                 <p className="break-all font-mono">{record.key}</p>

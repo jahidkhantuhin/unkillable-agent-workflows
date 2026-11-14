@@ -8,16 +8,20 @@ import {
   runIdParamsSchema,
   terminalStatuses,
   NodeFailure,
+  supportConfigSchema,
 } from '@unkillable/shared';
 import {
   RunRepository,
   bootstrapReliabilityIndexes,
   approvalIndexes,
+  supportIndexes,
 } from '@unkillable/storage';
 import { createExecutor } from './executor';
+import { MailpitMailer, supportDependencies } from './support-adapters';
 const config = {
   ...infrastructureSchema.parse(process.env),
   ...workerConfigSchema.parse(process.env),
+  ...supportConfigSchema.parse(process.env),
 };
 const logger = pino({ level: config.LOG_LEVEL });
 const mongo = new MongoClient(config.MONGODB_URI, {
@@ -27,14 +31,18 @@ await mongo.connect();
 await bootstrapReliabilityIndexes(mongo.db());
 for (const [name, indexes] of Object.entries(approvalIndexes))
   await mongo.db().collection(name).createIndexes(indexes);
+for (const [name, indexes] of Object.entries(supportIndexes))
+  await mongo.db().collection(name).createIndexes(indexes);
 const repository = new RunRepository(mongo);
 const reliability = repository.reliability();
+const smtp = new MailpitMailer(config);
 const executor = await createExecutor(
   repository,
   config.MONGODB_URI,
   mongo.db().databaseName,
   config.DEMO_NODE_DELAY_MS,
   config.NODE_RETRY_POLICIES,
+  supportDependencies(repository, config, (mail) => smtp.deliver(mail)),
 );
 const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 connection.on('error', (err) =>
@@ -101,7 +109,7 @@ const maintenance = setInterval(() => {
   if (maintaining) return;
   maintaining = true;
   void (async () => {
-    await reliability.dispatchOutbox();
+    await reliability.dispatchOutbox(25, (mail) => smtp.deliver(mail));
     const failedJobs = await queue.getFailed(failedOffset, failedOffset + 99);
     failedOffset = failedJobs.length === 100 ? failedOffset + 100 : 0;
     for (const job of failedJobs) {
@@ -139,6 +147,7 @@ async function shutdown() {
   await queue.close();
   connection.disconnect();
   await executor.close();
+  smtp.close();
   await mongo.close();
   clearTimeout(timeout);
   logger.info('Worker stopped');

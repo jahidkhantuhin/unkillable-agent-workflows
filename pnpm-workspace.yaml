@@ -11,6 +11,9 @@ minimumReleaseAgeExclude:
   - '@better-auth/prisma-adapter@1.7.23'
   - '@better-auth/telemetry@1.7.23'
   - better-auth@1.7.23
+  - '@ai-sdk/gateway@4.0.146'
+  - '@ai-sdk/google@4.0.121'
+  - ai@7.0.173
 allowBuilds:
   esbuild: true
   msgpackr-extract: false

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { runSchema, runStatusSchema } from './domain';
 import type { RunEvent } from './events';
 import { nodePolicyOverridesSchema } from './reliability';
+import { supportNodeSchema } from './support';
 export const deliveryModeSchema = z.enum([
   'normal',
   'retry-once',
@@ -53,11 +54,16 @@ export const workerConfigSchema = runQueueConfigSchema.extend({
   NODE_RETRY_POLICIES: nodePolicyOverridesSchema.refine(
     (value) =>
       Object.keys(value).every((key) =>
-        ['prepare', 'summarize', 'complete'].includes(key),
+        [
+          'prepare',
+          'summarize',
+          'complete',
+          ...supportNodeSchema.options.filter((node) => node !== 'approval'),
+        ].includes(key),
       ),
     {
       message:
-        'Retry policy keys must name task nodes: prepare, summarize, complete',
+        'Retry policy keys must name demo or support task nodes; approval is not retryable',
     },
   ),
 });

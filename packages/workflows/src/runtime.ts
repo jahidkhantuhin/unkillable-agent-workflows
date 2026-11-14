@@ -30,11 +30,24 @@ type Hooks = {
   ) => Promise<void>;
 };
 /** Notify the application only after the native checkpoint write has completed. */
-class ObservedSaver extends MongoDBSaver {
+export class ObservedSaver<
+  T extends { completed: readonly string[] },
+> extends MongoDBSaver {
   constructor(
     client: MongoClient,
     dbName: string,
-    private readonly hooks: Hooks,
+    private readonly hooks: {
+      checkpoint: (
+        runId: string,
+        state: T,
+        checkpointId: string,
+      ) => Promise<void>;
+    },
+    private readonly schema: {
+      safeParse(
+        value: unknown,
+      ): { success: true; data: T } | { success: false };
+    },
   ) {
     super({
       client,
@@ -49,7 +62,7 @@ class ObservedSaver extends MongoDBSaver {
     metadata: Parameters<MongoDBSaver['put']>[2],
   ) {
     const saved = await super.put(config, checkpoint, metadata);
-    const state = demoStateSchema.safeParse(checkpoint.channel_values);
+    const state = this.schema.safeParse(checkpoint.channel_values);
     if (state.success && state.data.completed.length)
       await this.hooks.checkpoint(
         String(config.configurable?.thread_id),
@@ -152,7 +165,7 @@ export async function createDemoRuntime(
 ) {
   const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
   await client.connect();
-  const saver = new ObservedSaver(client, dbName, hooks);
+  const saver = new ObservedSaver(client, dbName, hooks, demoStateSchema);
   const errors = await saver.setup();
   if (errors.length) {
     await client.close();

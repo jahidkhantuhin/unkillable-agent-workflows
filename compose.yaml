@@ -36,7 +36,14 @@ services:
       retries: 20
   mailpit:
     image: axllent/mailpit:v1.27
+    environment:
+      MP_IGNORE_DUPLICATE_IDS: 'true'
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: '0'
+      MP_DISABLE_VERSION_CHECK: 'true'
+    volumes: ['mailpit-data:/data']
     ports: ['127.0.0.1:1025:1025', '127.0.0.1:8025:8025']
 volumes:
+  mailpit-data:
   mongo-data:
   redis-data:

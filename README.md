@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–5 provide authentication/RBAC, durable execution, configurable retries, transactional effect receipts/outbox, admin Dead Letters management, and human approval gates. Runs can wait for a human, survive worker restarts, and expose live/replayable timelines. The demo delivers a stored local notice; no AI model, email, or payment is used. External adapters, compensation, and chaos controls arrive in later steps. No chaos-report numbers are claimed yet.
+Steps 1–6 provide durable execution, human approval, and a support ticket router with validated classification, cited policy replies, fake refunds, and local Mailpit email capture. MockLLM is the default; Gemini and local Ollama are opt-in adapters. Runs survive worker restarts and expose live timelines and effect receipts. Compensation and chaos controls remain later steps; no chaos-report numbers are claimed.
 
 ## Quickstart
 
@@ -88,15 +88,15 @@ Official references: [Next.js Turbopack](https://nextjs.org/docs/app/api-referen
 
 Register at `/register`; accounts start as viewers. Registration accepts name, email, and a password of 12–128 characters; callers cannot supply a role. The seed command creates the local administrator using `SEED_EMAIL`, `SEED_PASSWORD`, `SEED_NAME`, and `SEED_ROLE` from `.env`. Example defaults are **local demo credentials only**: `admin@example.test` / `local-demo-password-change-me`. Set your own values before seeding if preferred. Re-running seed preserves existing passwords and applies the configured role; seeding is disabled in production.
 
-| Role     | Workspace access                                                      |
-| -------- | --------------------------------------------------------------------- |
-| viewer   | Runs and Workflows                                                    |
-| approver | Viewer access plus starting demo runs and reading/resolving approvals |
-| admin    | All sections, including Chaos and Analytics                           |
+| Role     | Workspace access                                                  |
+| -------- | ----------------------------------------------------------------- |
+| viewer   | Runs and Workflows                                                |
+| approver | Viewer access plus starting demos/tickets and resolving approvals |
+| admin    | All sections, including Chaos and Analytics                       |
 
 Step 2 established section access; Step 5 implements approval actions. Navigation hides unauthorized sections, protected pages recheck the session on the server, and API permission checks read the current membership on every request. Role changes do not require re-login; the navigation refreshes on window focus. Missing memberships fail closed. This is one local workspace (`workspaceId=local`), not a multi-tenant implementation.
 
-API endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, and `GET /auth/access/:section` (a permission check, not workflow execution). Browser requests use the same-origin `/api/backend/auth/*` proxy, which forwards HTTP-only cookies. API responses do not expose session tokens. Better Auth 1.7.23 hashes passwords and stores sessions in MongoDB. Sessions have a fixed seven-day lifetime, no cookie cache, and server-side revocation on logout; production cookies are Secure, all session cookies are HttpOnly/SameSite=Lax. Auth mutations require trusted origins, native auth rate limits use the database, and logs redact cookies and authorization headers. Email verification and password recovery are not configured in this local showcase; no email is sent.
+API endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, and `GET /auth/access/:section` (a permission check, not workflow execution). Browser requests use the same-origin `/api/backend/auth/*` proxy, which forwards HTTP-only cookies. API responses do not expose session tokens. Better Auth 1.7.23 hashes passwords and stores sessions in MongoDB. Sessions have a fixed seven-day lifetime, no cookie cache, and server-side revocation on logout; production cookies are Secure, all session cookies are HttpOnly/SameSite=Lax. Auth mutations require trusted origins, native auth rate limits use the database, and logs redact cookies and authorization headers. Email verification and password recovery are not configured in this local showcase; those auth flows send no email.
 
 The app bootstraps indexes before accepting API traffic; `pnpm db:migrate` repeats the same idempotent bootstrap manually. Collections:
 
@@ -112,6 +112,16 @@ The app bootstraps indexes before accepting API traffic; `pnpm db:migrate` repea
 | nodeAttempts, localDeliveries                     | Durable retry budgets/deadlines and the local notification sink       |
 
 The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, memberships, event sequence numbers, and outbox keys. Shared Zod schemas define every document and the AG-UI-shaped run-event union; application repositories validate writes and reads. Better Auth owns its MongoDB adapter and auth-record lifecycle. Execution now uses transactional run/event writes; the unique index alone does not claim exactly-once external effects.
+
+## Support ticket router (Step 6)
+
+Open **Runs → New ticket** as an admin or approver. Load the duplicate-charge example, start it, and inspect classify → retrieve_policy → draft_reply → risk_check → approval → issue_refund → send_email → close_ticket. Every ticket pauses before its effects. Approve the original, edit the reply, or reject with a reason. An approved duplicate-charge example produces one fake USD 49.00 refund and one email captured at http://localhost:8025; how-to/general refund-review replies produce no automatic refund, and rejection produces neither effect.
+
+`pnpm seed` upserts three synthetic ticket examples. New collections tickets, ticketExamples, fakeRefunds and fakeEmails retain verifiable state/effects. Inputs accept only .test recipients and local Mailpit SMTP; the worker never contacts a bank or real customer mailbox. MockLLM/local policies need no model key. Optional SUPPORT_LLM_PROVIDER=gemini or ollama enables configured adapters; tests always use mocks. Support node outputs, citations, proposed refund, approved reply and effect receipts appear on run detail and in the Approval Inbox.
+
+Compose enables persistent Mailpit storage and duplicate Message-ID suppression. Replays use a stable ID; this receiver setting closes the SMTP acceptance/acknowledgement gap. Keep deduplication and retained messages intact; this is a local Mailpit guarantee, not a generic exactly-once SMTP claim. Refund compensation is Step 7 and is not implemented yet.
+
+See [docs/STEP-6.md](docs/STEP-6.md) for all example outcomes, new environment variables, adapter contracts, safety boundaries, retry/DLQ behavior and tests. Apply the updated Compose configuration with `docker compose up -d` before testing email capture. Stop dev and run `pnpm check` plus `pnpm test:integration` for verification.
 
 ## Human approval gates (Step 5)
 
@@ -129,7 +139,7 @@ The Test title field names the run and appears first in a larger font, with the 
 
 Demo controls keep Start demo run right-aligned, alongside a bordered Require human approval checkbox. On smaller screens, the controls wrap below the scenario selector.
 
-**What the worker does:** The API accepts requests and queues jobs. The worker performs the workflow work. Currently, it uses no AI model and sends no emails or payments.
+**What the worker does:** The API accepts requests and queues jobs. The worker performs the workflow work. The durability demo uses no AI model and sends no emails or payments. The support workflow defaults to MockLLM, records fake refunds in MongoDB, and sends replies only to local Mailpit. No real payment or customer email is sent.
 
 **What happens if it crashes:** A replacement worker picks up the abandoned job and resumes from the last saved checkpoint. The interrupted step may run again; completed, checkpointed steps are preserved. A replacement worker must be started for recovery to happen; automatic process supervision comes in a later step.
 

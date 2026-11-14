@@ -99,6 +99,11 @@ export function RunsList() {
             DURABLE EXECUTION
           </p>
           <h1 className="mt-3 text-4xl font-semibold">Runs</h1>
+          {identity && hasPermission(identity.role, 'runs:create') && (
+            <Button asChild className="mt-4">
+              <Link href="/tickets/new">New ticket</Link>
+            </Button>
+          )}
           <p className="mt-3 text-sm text-muted-foreground">
             Start a demo, follow its events, and inspect its saved state.
           </p>

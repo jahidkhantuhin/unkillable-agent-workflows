@@ -5,6 +5,7 @@ export * from './auth';
 export * from './runs';
 export * from './reliability';
 export * from './approvals';
+export * from './support';
 
 export const healthSchema = z.object({
   status: z.enum(['ok', 'degraded']),

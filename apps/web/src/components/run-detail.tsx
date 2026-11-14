@@ -6,10 +6,12 @@ import {
   runDTOSchema,
   type RunDTO,
   type RunEvent,
+  supportNodeSchema,
 } from '@unkillable/shared';
 import { RunStatus } from './runs-list';
 import { ReliabilityPanel } from './reliability-panel';
 import { RunScenario, runTitle } from './run-scenario';
+import { SupportOutputs } from './support-outputs';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
@@ -38,6 +40,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
   const [run, setRun] = useState(initial);
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [connection, setConnection] = useState('Connecting');
+  const support = run.workflowId === 'support-ticket-router';
   useEffect(() => {
     setRun(initial);
     setEvents([]);
@@ -111,7 +114,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs tracking-widest text-emerald-500">
-            DURABILITY DEMO
+            {support ? 'SUPPORT TICKET ROUTER' : 'DURABILITY DEMO'}
           </p>
           <h1 className="mt-3 text-4xl font-semibold">Run timeline</h1>
           <h2 className="mt-5 max-w-3xl break-words text-xl font-semibold">
@@ -126,9 +129,12 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         </div>
         <RunStatus status={run.status} />
       </div>
-      <ReliabilityPanel runId={run.id} />
+      <ReliabilityPanel runId={run.id} support={support} />
+      {support && <SupportOutputs state={run.state} />}
       <section className="mt-6 rounded-2xl border border-border p-6">
-        <h2 className="font-medium">Notice content</h2>
+        <h2 className="font-medium">
+          {support ? 'Ticket description' : 'Notice content'}
+        </h2>
         <p className="mt-3 whitespace-pre-wrap break-words text-sm text-muted-foreground">
           {String(run.state.message ?? '')}
         </p>
@@ -138,7 +144,11 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
               Approved edited content
             </h3>
             <p className="mt-2 whitespace-pre-wrap break-words text-sm">
-              {String(run.state.noticeMessage ?? '')}
+              {String(
+                support
+                  ? run.state.approvedMessage
+                  : (run.state.noticeMessage ?? ''),
+              )}
             </p>
           </>
         )}
@@ -168,9 +178,11 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         </Link>
       )}
       <div className="mt-8 flex flex-wrap gap-3">
-        {(run.state.requireApproval
-          ? ['prepare', 'summarize', 'approval', 'complete']
-          : ['prepare', 'summarize', 'complete']
+        {(support
+          ? supportNodeSchema.options
+          : run.state.requireApproval
+            ? ['prepare', 'summarize', 'approval', 'complete']
+            : ['prepare', 'summarize', 'complete']
         ).map((step) => (
           <span
             key={step}

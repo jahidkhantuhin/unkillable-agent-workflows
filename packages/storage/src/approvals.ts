@@ -50,6 +50,7 @@ export class ApprovalRepository {
     checkpointId: string,
     message: string,
     title = '',
+    context: { proposal?: Record<string, unknown>; reasoning?: string } = {},
   ) {
     const session = this.client.startSession();
     try {
@@ -70,8 +71,12 @@ export class ApprovalRepository {
           nodeId: 'approval',
           version: 0,
           status: 'pending',
-          proposedAction: noticePayloadSchema.parse({ message }),
+          proposedAction: {
+            ...context.proposal,
+            ...noticePayloadSchema.parse({ message }),
+          },
           reasoning:
+            context.reasoning ??
             'A human must review this local notice before the complete node can queue delivery. This is a deterministic demo; no AI model is used.',
           createdAt: now,
           updatedAt: now,

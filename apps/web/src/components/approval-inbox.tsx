@@ -49,7 +49,10 @@ function ApprovalCard({
         {approval.title || original}
       </h2>
       <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-        Pending review · Local notice
+        Pending review ·{' '}
+        {approval.proposedAction.kind === 'support-ticket'
+          ? 'Support ticket'
+          : 'Local notice'}
       </p>
       <Link
         href={`/runs/${approval.runId}`}
@@ -61,8 +64,16 @@ function ApprovalCard({
         {approval.reasoning}
       </p>
       <p className="mt-4 text-xs text-muted-foreground">
-        Proposed action: store one local notice. No email or payment is sent.
+        {approval.proposedAction.kind === 'support-ticket'
+          ? `Proposed action: fake refund USD ${(Number(approval.proposedAction.refundCents) / 100).toFixed(2)}; send reply to ${String(approval.proposedAction.recipient)} through local Mailpit. No real payment or customer email.`
+          : 'Proposed action: store one local notice. No email or payment is sent.'}
       </p>
+      {approval.proposedAction.kind === 'support-ticket' && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Policy {String(approval.proposedAction.citedPolicyId)}:{' '}
+          {String(approval.proposedAction.citedSnippet)}
+        </p>
+      )}
       <label className="mt-4 block text-sm font-medium">
         Draft content
         <textarea

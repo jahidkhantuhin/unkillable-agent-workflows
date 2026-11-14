@@ -11,13 +11,16 @@
   },
   "dependencies": {
     "@unkillable/shared": "workspace:*",
+    "@unkillable/storage": "workspace:*",
     "@unkillable/workflows": "workspace:*",
     "bullmq": "6.7.6",
     "ioredis": "latest",
     "mongodb": "7.9.0",
+    "nodemailer": "10.5.0",
     "pino": "latest",
-    "zod": "latest",
-    "@unkillable/storage": "workspace:*"
+    "zod": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/nodemailer": "8.0.2"
+  }
 }

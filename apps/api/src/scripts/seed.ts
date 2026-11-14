@@ -8,6 +8,7 @@ import {
   UserRepository,
 } from '../repositories/documents';
 import { createMongoAuth } from '../auth';
+import { SupportRepository } from '@unkillable/storage';
 const config = configSchema.parse(process.env);
 if (config.NODE_ENV === 'production')
   throw new Error('The local seed command is disabled in production');
@@ -24,6 +25,7 @@ const client = new MongoClient(config.MONGODB_URI, {
 try {
   await client.connect();
   await bootstrapIndexes(client.db());
+  await new SupportRepository(client).seedExamples();
   const memberships = new MongoMembershipRepository(client.db());
   const users = new UserRepository(client.db());
   const auth = createMongoAuth(client, memberships, {

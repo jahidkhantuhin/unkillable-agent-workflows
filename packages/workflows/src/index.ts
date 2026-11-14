@@ -1,4 +1,5 @@
 import { demoWorkflowVersion } from '@unkillable/shared';
+export { supportDefinition } from './support-definition';
 export const demoDefinition = {
   id: 'durability-demo',
   name: 'Durability demo',

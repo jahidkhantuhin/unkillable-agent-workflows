@@ -17,10 +17,12 @@ jobs:
       - run: docker compose up -d --wait mongo redis mailpit
       - run: docker compose up mongo-init
       - name: Database, run API, and worker recovery integration
-        run: pnpm exec vitest run apps/api/src/database.integration.test.ts apps/api/src/runs.integration.test.ts apps/api/src/reliability.integration.test.ts apps/api/src/approvals.integration.test.ts apps/worker/src/recovery.integration.test.ts
+        run: pnpm exec vitest run --maxWorkers=2 apps/api/src/database.integration.test.ts apps/api/src/runs.integration.test.ts apps/api/src/reliability.integration.test.ts apps/api/src/approvals.integration.test.ts apps/api/src/support.integration.test.ts apps/worker/src/recovery.integration.test.ts
         env:
           INTEGRATION_MONGODB_URI: mongodb://127.0.0.1:27017/unkillable_ci?replicaSet=rs0&directConnection=true
           INTEGRATION_REDIS_URL: redis://127.0.0.1:6379
+          INTEGRATION_MAILPIT_URL: http://127.0.0.1:8025
+          SUPPORT_LLM_PROVIDER: mock
       - if: always()
         run: docker compose down
       - run: pnpm build

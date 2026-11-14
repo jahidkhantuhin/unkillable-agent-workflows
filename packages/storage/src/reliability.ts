@@ -20,6 +20,10 @@ import {
   defaultRetryPolicy,
   type AttemptStore,
   type RetryPolicy,
+  fakeRefundSchema,
+  fakeEmailSchema,
+  supportMailSchema,
+  type SupportMail,
 } from '@unkillable/shared';
 import { RunRepository } from './index';
 type Stored = Document & { _id: string };
@@ -321,6 +325,18 @@ export class ReliabilityRepository {
         await this.db
           .collection<Stored>('deadLetters')
           .insertOne({ ...letter, _id: letter.id }, { session });
+        // A failed support run must not keep sending a pending reply behind its DLQ record.
+        await this.db.collection('outbox').updateMany(
+          { runId, kind: 'email', status: 'pending' },
+          {
+            $set: {
+              status: 'failed',
+              lastError: info.message,
+              updatedAt: now,
+            },
+          },
+          { session },
+        );
         await this.runs.appendInSession(
           runId,
           { type: 'RUN_ERROR', code: info.code, message: info.message },
@@ -430,10 +446,93 @@ export class ReliabilityRepository {
     const deliveries = (
       await this.db.collection('localDeliveries').find({ runId }).toArray()
     ).map((doc) => localDeliverySchema.parse(doc));
-    return { keys, outbox, deliveries };
+    const refunds = (
+      await this.db.collection('fakeRefunds').find({ runId }).toArray()
+    ).map((value) => fakeRefundSchema.parse(value));
+    const emails = (
+      await this.db.collection('fakeEmails').find({ runId }).toArray()
+    ).map((value) => fakeEmailSchema.parse(value));
+    return { keys, outbox, deliveries, refunds, emails };
+  }
+  /** SMTP is outside Mongo transactions. Stable Message-IDs require Mailpit receiver deduplication. */
+  async deliverEmail(
+    key: string,
+    deliver: (mail: SupportMail) => Promise<void>,
+  ) {
+    const doc = await this.db.collection<Stored>('outbox').findOne({ key });
+    if (!doc) throw new PermanentError('Email intent not found');
+    const record = outboxSchema.parse(doc);
+    if (record.status === 'sent') return;
+    if (record.kind !== 'email')
+      throw new PermanentError('Not an email intent');
+    if (record.status === 'failed')
+      await this.db.collection<Stored>('outbox').updateOne(
+        { _id: record.id, status: 'failed' },
+        {
+          $set: { status: 'pending', updatedAt: this.now() },
+          $unset: { lastError: '' },
+        },
+      );
+    try {
+      await deliver(supportMailSchema.parse(record.payload));
+      await this.executeOnce(
+        `${key}:delivery`,
+        async ({ session }) => {
+          const row = localDeliverySchema.parse({
+            id: randomUUID(),
+            key,
+            runId: record.runId,
+            outboxId: record.id,
+            payload: record.payload,
+            createdAt: this.now(),
+          });
+          await this.db
+            .collection<Stored>('localDeliveries')
+            .insertOne({ ...row, _id: row.id }, { session });
+          await this.db.collection<Stored>('outbox').updateOne(
+            { _id: record.id },
+            {
+              $set: {
+                status: 'sent',
+                sentAt: this.now(),
+                updatedAt: this.now(),
+              },
+              $inc: { attempts: 1 },
+              $unset: { lastError: '' },
+            },
+            { session },
+          );
+          await this.db
+            .collection('fakeEmails')
+            .updateOne(
+              { key },
+              { $set: { status: 'sent', updatedAt: this.now() } },
+              { session },
+            );
+          await this.runs.appendInSession(
+            record.runId,
+            {
+              type: 'CUSTOM',
+              name: 'outbox.delivered',
+              value: { key, outboxId: record.id, kind: 'email' },
+            },
+            { key: `outbox:${record.id}:sent`, allowTerminal: true },
+            session,
+          );
+          return { receipt: key };
+        },
+        effectResultSchema,
+      );
+    } catch (error) {
+      await this.failOutbox(record.id, error);
+      throw error;
+    }
   }
   /** Local MongoDB sink only: the receipt, delivery, outbox ACK, and audit event share one transaction. */
-  async dispatchOutbox(limit = 25) {
+  async dispatchOutbox(
+    limit = 25,
+    deliverEmail?: (mail: SupportMail) => Promise<void>,
+  ) {
     const records = await this.db
       .collection('outbox')
       .find({ status: 'pending', availableAt: { $lte: this.now() } })
@@ -442,6 +541,11 @@ export class ReliabilityRepository {
       .toArray();
     for (const doc of records) {
       const record = outboxSchema.parse(doc);
+      if (record.kind === 'email') {
+        if (deliverEmail)
+          await this.deliverEmail(record.key, deliverEmail).catch(() => {});
+        continue;
+      }
       try {
         if (record.kind !== 'notification')
           throw new PermanentError(

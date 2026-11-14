@@ -1,5 +1,9 @@
 import type { Db, IndexDescription } from 'mongodb';
-import { reliabilityIndexes, approvalIndexes } from '@unkillable/storage';
+import {
+  reliabilityIndexes,
+  approvalIndexes,
+  supportIndexes,
+} from '@unkillable/storage';
 export const collectionIndexes: Record<string, IndexDescription[]> = {
   users: [{ key: { email: 1 }, unique: true }],
   memberships: [
@@ -45,6 +49,7 @@ export const collectionIndexes: Record<string, IndexDescription[]> = {
   authRateLimits: [{ key: { key: 1 }, unique: true }],
   ...reliabilityIndexes,
   ...approvalIndexes,
+  ...supportIndexes,
 };
 /** createIndexes is idempotent and fails startup on conflicting uniqueness guarantees. */
 export async function bootstrapIndexes(db: Db) {

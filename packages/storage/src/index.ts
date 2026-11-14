@@ -13,6 +13,10 @@ import {
   StaleExecutionError,
   type DemoInput,
   demoWorkflowVersion,
+  supportStateSchema,
+  supportWorkflowId,
+  ticketDocumentSchema,
+  type TicketInput,
   type Run,
   type RunStatus,
   type RunEvent,
@@ -20,6 +24,7 @@ import {
 } from '@unkillable/shared';
 import { ReliabilityRepository } from './reliability';
 import { ApprovalRepository } from './approvals';
+import { SupportRepository } from './support';
 type Stored = Document & { _id: string };
 export interface RunStore {
   create(userId: string, input: DemoInput): Promise<Run>;
@@ -28,6 +33,9 @@ export interface RunStore {
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  support() {
+    return new SupportRepository(this.client, this.db);
+  }
   approvals() {
     return new ApprovalRepository(this.client, this.db);
   }
@@ -44,14 +52,37 @@ export class RunRepository implements RunStore {
     this.log = db.collection<Stored>('runEvents');
   }
   async create(userId: string, input: DemoInput) {
+    return this.createWorkflow(
+      userId,
+      input,
+      'durability-demo',
+      demoWorkflowVersion,
+    );
+  }
+  async createSupport(userId: string, input: TicketInput) {
+    const ticketId = randomUUID();
+    const state = supportStateSchema.parse({
+      title: input.title,
+      message: input.description,
+      ticketId,
+      ticket: input,
+    });
+    return this.createWorkflow(userId, state, supportWorkflowId, 1);
+  }
+  private async createWorkflow(
+    userId: string,
+    input: Record<string, unknown>,
+    workflowId: string,
+    workflowVersion: number,
+  ) {
     const now = new Date();
     const run = runSchema.parse({
       id: randomUUID(),
       createdAt: now,
       updatedAt: now,
       createdBy: userId,
-      workflowId: 'durability-demo',
-      workflowVersion: demoWorkflowVersion,
+      workflowId,
+      workflowVersion,
       status: 'queued',
       state: input,
       sequence: 1,
@@ -72,6 +103,20 @@ export class RunRepository implements RunStore {
     try {
       await session.withTransaction(async () => {
         await this.runs.insertOne({ ...run, _id: run.id }, { session });
+        if (workflowId === supportWorkflowId) {
+          const state = supportStateSchema.parse(input);
+          const ticket = ticketDocumentSchema.parse({
+            ...state.ticket,
+            id: state.ticketId,
+            runId: run.id,
+            status: 'open',
+            createdAt: now,
+            updatedAt: now,
+          });
+          await this.db
+            .collection<Stored>('tickets')
+            .insertOne({ ...ticket, _id: ticket.id }, { session });
+        }
         await this.log.insertOne({ ...event, _id: event.id }, { session });
       });
     } finally {
@@ -212,3 +257,4 @@ export type RunUpdate = {
 };
 export * from './reliability';
 export * from './approvals';
+export * from './support';

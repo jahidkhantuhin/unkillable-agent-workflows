@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { fakeRefundSchema, fakeEmailSchema } from './support';
 import { deadLetterSchema, idempotencyKeySchema, outboxSchema } from './domain';
 export const retryPolicySchema = z
   .object({
@@ -74,6 +75,8 @@ export function classifyError(error: unknown): ErrorInfo {
       'MongoNetworkTimeoutError',
       'MongoServerSelectionError',
       'MongoPoolClearedError',
+      'TimeoutError',
+      'AbortError',
     ].includes(String(value.name)) ||
     [
       'ECONNRESET',
@@ -158,6 +161,17 @@ export const localDeliverySchema = z.object({
 });
 export const effectResultSchema = z.object({ receipt: z.string() });
 export const reliabilityDetailsSchema = z.object({
+  refunds: z
+    .array(fakeRefundSchema.extend({ createdAt: z.iso.datetime() }))
+    .default([]),
+  emails: z
+    .array(
+      fakeEmailSchema.extend({
+        createdAt: z.iso.datetime(),
+        updatedAt: z.iso.datetime(),
+      }),
+    )
+    .default([]),
   keys: z.array(
     idempotencyKeySchema.extend({
       createdAt: z.iso.datetime(),

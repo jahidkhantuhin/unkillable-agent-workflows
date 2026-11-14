@@ -19,24 +19,33 @@ async function forward(
     pathname === 'dead-letters' ||
     /^dead-letters\/[0-9a-f-]{36}(\/(retry|discard))?$/.test(pathname);
   const stream = isRun && pathname.endsWith('/events');
+  const isTicket = pathname === 'tickets' || pathname === 'tickets/examples';
   const isApproval =
     pathname === 'approvals' ||
     /^approvals\/[0-9a-f-]{36}(\/resolve)?$/.test(pathname);
-  if (!allowedPaths.has(pathname) && !isRun && !isDeadLetter && !isApproval)
+  if (
+    !allowedPaths.has(pathname) &&
+    !isRun &&
+    !isDeadLetter &&
+    !isApproval &&
+    !isTicket
+  )
     return NextResponse.json(
       { error: { message: 'Not found' } },
       { status: 404 },
     );
   if (
-    isApproval
-      ? request.method !== (pathname.endsWith('/resolve') ? 'POST' : 'GET')
-      : isDeadLetter
-        ? request.method !==
-          (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
-        : isRun
-          ? request.method !== 'GET' &&
-            !(pathname === 'runs' && request.method === 'POST')
-          : (request.method === 'GET') !== (pathname === 'auth/me')
+    isTicket
+      ? request.method !== (pathname === 'tickets' ? 'POST' : 'GET')
+      : isApproval
+        ? request.method !== (pathname.endsWith('/resolve') ? 'POST' : 'GET')
+        : isDeadLetter
+          ? request.method !==
+            (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
+          : isRun
+            ? request.method !== 'GET' &&
+              !(pathname === 'runs' && request.method === 'POST')
+            : (request.method === 'GET') !== (pathname === 'auth/me')
   )
     return NextResponse.json(
       { error: { message: 'Method not allowed' } },

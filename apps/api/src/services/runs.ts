@@ -1,6 +1,6 @@
-import { demoDefinition } from '@unkillable/workflows';
+import { demoDefinition, supportDefinition } from '@unkillable/workflows';
 import type { RunRepository } from '@unkillable/storage';
-import type { RunStatus, DemoInput } from '@unkillable/shared';
+import type { RunStatus, DemoInput, TicketInput } from '@unkillable/shared';
 import { HttpError } from '../errors';
 export interface RunQueue {
   add(
@@ -18,6 +18,7 @@ export class RunService {
   ) {}
   async initialize() {
     await this.repository.definition(demoDefinition);
+    await this.repository.definition(supportDefinition);
   }
   async create(userId: string, input: DemoInput) {
     const run = await this.repository.create(userId, input);
@@ -27,6 +28,18 @@ export class RunService {
       this.warn(error);
     }
     return (await this.repository.get(run.id))!;
+  }
+  async createTicket(userId: string, input: TicketInput) {
+    const run = await this.repository.createSupport(userId, input);
+    try {
+      await this.dispatch(run.id);
+    } catch (error) {
+      this.warn(error);
+    }
+    return (await this.repository.get(run.id))!;
+  }
+  ticketExamples() {
+    return this.repository.support().examples();
   }
   private async dispatch(runId: string) {
     const run = await this.get(runId);

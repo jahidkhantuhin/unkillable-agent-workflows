@@ -1,6 +1,7 @@
 import { createDemoRuntime, Command } from '@unkillable/workflows/runtime';
 import { RunRepository } from '@unkillable/storage';
 import { retryOperation } from '@unkillable/workflows/retry';
+import type { SupportDependencies } from '@unkillable/workflows/support';
 import {
   demoStateSchema,
   terminalStatuses,
@@ -13,12 +14,12 @@ import {
   PermanentError,
   NodeFailure,
 } from '@unkillable/shared';
-export async function createExecutor(
+async function createDemoExecutor(
   repository: RunRepository,
   uri: string,
   dbName: string,
   delayMs: number,
-  policies: Partial<Record<DemoNode, RetryPolicy>> = {},
+  policies: Partial<Record<string, RetryPolicy>> = {},
 ) {
   const reliability = repository.reliability();
   const approvals = repository.approvals();
@@ -199,6 +200,67 @@ export async function createExecutor(
       } finally {
         active.delete(run.id);
       }
+    },
+  };
+}
+export async function createExecutor(
+  repository: RunRepository,
+  uri: string,
+  dbName: string,
+  delayMs: number,
+  policies: Partial<Record<string, RetryPolicy>> = {},
+  support?: SupportDependencies,
+) {
+  const demo = await createDemoExecutor(
+    repository,
+    uri,
+    dbName,
+    delayMs,
+    policies,
+  );
+  let ticketRuntime:
+    | Promise<
+        Awaited<
+          ReturnType<
+            (typeof import('./support-executor'))['createSupportExecutor']
+          >
+        >
+      >
+    | undefined;
+  let closeMailer: (() => void) | undefined;
+  return {
+    async execute(id: string, execution?: number) {
+      const run = await repository.get(id);
+      if (run?.workflowId !== 'support-ticket-router')
+        return demo.execute(id, execution);
+      if (!ticketRuntime)
+        ticketRuntime = (async () => {
+          const { createSupportExecutor } = await import('./support-executor');
+          let deps = support;
+          if (!deps) {
+            const { supportConfigSchema } = await import('@unkillable/shared');
+            const { supportDependencies, MailpitMailer } =
+              await import('./support-adapters');
+            const config = supportConfigSchema.parse({});
+            const smtp = new MailpitMailer(config);
+            closeMailer = () => smtp.close();
+            deps = supportDependencies(repository, config, (mail) =>
+              smtp.deliver(mail),
+            );
+          }
+          return createSupportExecutor(repository, uri, dbName, deps, policies);
+        })().catch((error) => {
+          ticketRuntime = undefined;
+          closeMailer?.();
+          closeMailer = undefined;
+          throw error;
+        });
+      return (await ticketRuntime).execute(id, execution);
+    },
+    async close() {
+      await demo.close();
+      if (ticketRuntime) await (await ticketRuntime).close();
+      closeMailer?.();
     },
   };
 }
