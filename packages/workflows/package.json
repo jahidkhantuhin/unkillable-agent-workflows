@@ -17,6 +17,7 @@
   "devDependencies": {},
   "exports": {
     ".": "./src/index.ts",
-    "./runtime": "./src/runtime.ts"
+    "./runtime": "./src/runtime.ts",
+    "./retry": "./src/retry.ts"
   }
 }

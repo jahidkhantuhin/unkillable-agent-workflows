@@ -6,7 +6,6 @@ Do not run Git commands unless explicitly requested. Author: Jahid Khan Tuhin.
 Keep README.md and docs/PROGRESS.md current; record actual verification results.
 Never use real customer, banking, payment, or email side effects. Tests use mocks.
 
-Current scope: Step 3, durable execution core, implemented.
-See docs/PROGRESS.md for verification. Wait for user review and continuation
-before Step 4. Steps 1–2 are complete.
+Current scope: Step 4, reliability layer, implemented. See docs/PROGRESS.md for verification.
+Steps 1–4 are complete. Wait for review and continuation before Step 5.
 Do not run Git commands; the user commits each step.

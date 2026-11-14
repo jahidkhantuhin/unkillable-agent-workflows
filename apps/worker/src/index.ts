@@ -1,4 +1,4 @@
-import { Worker } from 'bullmq';
+import { Worker, Queue, UnrecoverableError, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import { MongoClient } from 'mongodb';
 import pino from 'pino';
@@ -7,8 +7,12 @@ import {
   workerConfigSchema,
   runIdParamsSchema,
   terminalStatuses,
+  NodeFailure,
 } from '@unkillable/shared';
-import { RunRepository } from '@unkillable/storage';
+import {
+  RunRepository,
+  bootstrapReliabilityIndexes,
+} from '@unkillable/storage';
 import { createExecutor } from './executor';
 const config = {
   ...infrastructureSchema.parse(process.env),
@@ -19,12 +23,15 @@ const mongo = new MongoClient(config.MONGODB_URI, {
   serverSelectionTimeoutMS: 5000,
 });
 await mongo.connect();
+await bootstrapReliabilityIndexes(mongo.db());
 const repository = new RunRepository(mongo);
+const reliability = repository.reliability();
 const executor = await createExecutor(
   repository,
   config.MONGODB_URI,
   mongo.db().databaseName,
   config.DEMO_NODE_DELAY_MS,
+  config.NODE_RETRY_POLICIES,
 );
 const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 connection.on('error', (err) =>
@@ -35,7 +42,13 @@ const worker = new Worker(
   async (job) => {
     const { id } = runIdParamsSchema.parse({ id: job.data.runId });
     logger.info({ runId: id }, 'Executing durable run');
-    await executor.execute(id);
+    try {
+      await executor.execute(id, Number(job.data.execution ?? 0));
+    } catch (error) {
+      if (error instanceof NodeFailure)
+        throw new UnrecoverableError(error.message);
+      throw error;
+    }
   },
   {
     connection,
@@ -54,30 +67,55 @@ worker.on('error', (err) => logger.error({ err }, 'Worker error'));
 worker.on('stalled', (jobId) =>
   logger.warn({ jobId }, 'Stalled job recovered; resuming its checkpoint'),
 );
+async function recordFailedJob(job: Job | undefined, error: unknown) {
+  const id = job?.data?.runId;
+  if (typeof id !== 'string') return;
+  await reliability.recordFailure(id, Number(job?.data.execution ?? 0), error, {
+    jobId: job?.id ?? null,
+    attempts: job?.attemptsMade ?? 1,
+    queuePolicy: job?.opts ?? {},
+    stacktrace: job?.stacktrace ?? [],
+  });
+}
 worker.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, err }, 'Job failed');
-  void (async () => {
-    const id = job?.data?.runId;
-    if (typeof id !== 'string') return;
-    const run = await repository.get(id);
-    if (run && !terminalStatuses.includes(run.status))
-      await repository.append(
-        id,
-        {
-          type: 'RUN_ERROR',
-          code: 'EXECUTION_FAILED',
-          message: 'Workflow execution failed',
-        },
-        {
-          key: 'run:failed',
-          status: 'failed',
-          error: 'Workflow execution failed',
-        },
-      );
-  })().catch((error) =>
+  if (
+    job &&
+    !(err instanceof UnrecoverableError) &&
+    job.attemptsMade < (job.opts.attempts ?? 1) &&
+    !job.failedReason.includes('stalled')
+  )
+    return;
+  void recordFailedJob(job, err).catch((error) =>
     logger.error({ err: error }, 'Unable to record run failure'),
   );
 });
+const queue = new Queue(config.RUN_QUEUE_NAME, { connection });
+queue.on('error', (err) => logger.error({ err }, 'Worker queue error'));
+let maintaining = false;
+let failedOffset = 0;
+const maintenance = setInterval(() => {
+  if (maintaining) return;
+  maintaining = true;
+  void (async () => {
+    await reliability.dispatchOutbox();
+    const failedJobs = await queue.getFailed(failedOffset, failedOffset + 99);
+    failedOffset = failedJobs.length === 100 ? failedOffset + 100 : 0;
+    for (const job of failedJobs) {
+      const run = await repository.get(String(job.data.runId));
+      if (
+        run &&
+        !terminalStatuses.includes(run.status) &&
+        run.execution === Number(job.data.execution ?? 0)
+      )
+        await recordFailedJob(job, new Error(job.failedReason));
+    }
+  })()
+    .catch((err) => logger.error({ err }, 'Reliability maintenance will retry'))
+    .finally(() => {
+      maintaining = false;
+    });
+}, 1000).unref();
 const heartbeat = setInterval(
   () =>
     logger.info(
@@ -91,8 +129,10 @@ async function shutdown() {
   if (closing) return;
   closing = true;
   clearInterval(heartbeat);
+  clearInterval(maintenance);
   const timeout = setTimeout(() => process.exit(1), 20000).unref();
   await worker.close();
+  await queue.close();
   connection.disconnect();
   await executor.close();
   await mongo.close();

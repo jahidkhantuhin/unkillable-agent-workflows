@@ -49,6 +49,12 @@ export const runEventSchema = z.discriminatedUnion('type', [
     name: z.enum([
       'run.queued',
       'run.resumed',
+      'run.retried',
+      'deadletter.discarded',
+      'node.attempt',
+      'effect.completed',
+      'outbox.delivered',
+      'outbox.failed',
       'approval.requested',
       'approval.resolved',
       'retry.scheduled',

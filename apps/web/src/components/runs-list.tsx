@@ -68,7 +68,10 @@ export function RunsList() {
     try {
       const form = new FormData(event.currentTarget);
       const input = createRunSchema.parse({
-        input: { message: form.get('message') },
+        input: {
+          message: form.get('message'),
+          deliveryMode: form.get('deliveryMode'),
+        },
       });
       const response = await fetch('/api/backend/runs', {
         method: 'POST',
@@ -119,6 +122,26 @@ export function RunsList() {
                 defaultValue="Keep my workflow running after a worker restart"
                 className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"
               />
+            </label>
+            <label className="text-xs text-muted-foreground">
+              Local delivery simulation
+              <select
+                name="deliveryMode"
+                aria-label="Local delivery simulation"
+                defaultValue="normal"
+                className="mt-1 block h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground"
+              >
+                <option value="normal">Healthy delivery</option>
+                <option value="retry-once">
+                  Transient failure, then recover
+                </option>
+                <option value="exhaust">
+                  Exhaust retries; recover on manual retry
+                </option>
+                <option value="permanent">
+                  Permanent failure; discard example
+                </option>
+              </select>
             </label>
             <Button type="submit" disabled={pending}>
               {pending ? 'Queueing…' : 'Start demo run'}

@@ -6,7 +6,13 @@ import {
 } from '@unkillable/shared';
 import { requireAuth, trustedOrigin } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { createRun, getRun, listRuns, streamRun } from '../controllers/runs';
+import {
+  createRun,
+  getRun,
+  listRuns,
+  streamRun,
+  getReliability,
+} from '../controllers/runs';
 import type { RunService } from '../services/runs';
 import type { AuthService } from '../services/auth';
 export function runsRoutes(
@@ -39,6 +45,12 @@ export function runsRoutes(
     requireAuth(auth, 'runs:read'),
     validate(runIdParamsSchema, 'params'),
     streamRun(service, auth),
+  );
+  router.get(
+    '/:id/reliability',
+    requireAuth(auth, 'runs:read'),
+    validate(runIdParamsSchema, 'params'),
+    getReliability(service),
   );
   return router;
 }

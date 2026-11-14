@@ -10,6 +10,8 @@ import type { AuthService } from './services/auth';
 import { authRoutes } from './routes/auth';
 import type { RunService } from './services/runs';
 import { runsRoutes } from './routes/runs';
+import { deadLetterRoutes } from './routes/dead-letters';
+import { DeadLetterService } from './services/dead-letters';
 export function createApp(
   deps: HealthDependencies,
   origins = ['http://localhost:3000'],
@@ -41,8 +43,17 @@ export function createApp(
   );
   app.use(healthRoutes(deps));
   if (authService) app.use('/auth', authRoutes(authService, origins));
-  if (authService && runService)
+  if (authService && runService) {
     app.use('/runs', runsRoutes(runService, authService, origins));
+    app.use(
+      '/dead-letters',
+      deadLetterRoutes(
+        new DeadLetterService(runService.repository.reliability(), runService),
+        authService,
+        origins,
+      ),
+    );
+  }
   app.use((req, res) => {
     res.status(404).json({
       error: {

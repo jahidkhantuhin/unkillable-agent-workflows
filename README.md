@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–3 provide authentication/RBAC and durable execution of a deterministic demo workflow. Runs survive killed workers, save MongoDB checkpoints, and expose live/replayable timelines. Approvals, external effects, compensation, and chaos controls arrive in later steps. No chaos-report numbers are claimed yet.
+Steps 1–4 provide authentication/RBAC, durable execution, configurable retries, transactional effect receipts/outbox, and an admin Dead Letters page. Runs survive killed workers, save MongoDB checkpoints, and expose live/replayable timelines. The demo delivers a stored local notice; no AI model, email, or payment is used. Approvals, external adapters, compensation, and chaos controls arrive in later steps. No chaos-report numbers are claimed yet.
 
 ## Quickstart
 
@@ -53,22 +53,25 @@ The app bootstraps indexes before accepting API traffic; `pnpm db:migrate` repea
 | workflowDefinitions                               | Versioned workflow structure                                          |
 | runs, runEvents                                   | Execution state and append-only event history                         |
 | approvals                                         | Proposed decisions and future resolution records                      |
-| idempotencyKeys                                   | Unique keys for the reliability layer in Step 4                       |
-| deadLetters, outbox                               | Future failed-work context and outbound-effect records                |
+| idempotencyKeys                                   | Committed effect results returned unchanged on replay                 |
+| deadLetters, outbox                               | Failed-work context and transactional outbound intents                |
+| nodeAttempts, localDeliveries                     | Durable retry budgets/deadlines and the local notification sink       |
 
 The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, memberships, event sequence numbers, and outbox keys. Shared Zod schemas define every document and the AG-UI-shaped run-event union; application repositories validate writes and reads. Better Auth owns its MongoDB adapter and auth-record lifecycle. Execution now uses transactional run/event writes; the unique index alone does not claim exactly-once external effects.
 
 ## Durable demo runs (Step 3)
 
+Step 4 extends these runs with retries and a local outbox; see [docs/STEP-4.md](docs/STEP-4.md) for the four test scenarios, effect guarantees, admin Dead Letters actions, and per-node `NODE_RETRY_POLICIES` configuration.
+
 **What the worker does:** The API accepts requests and queues jobs. The worker performs the workflow work. Currently, it uses no AI model and sends no emails or payments.
 
 **What happens if it crashes:** A replacement worker picks up the abandoned job and resumes from the last saved checkpoint. The interrupted step may run again; completed, checkpointed steps are preserved. A replacement worker must be started for recovery to happen; automatic process supervision comes in a later step.
 
-Sign in as the seeded admin, open **Runs**, enter a message, and choose **Start demo run**. Approvers can start runs too; viewers can inspect them. The three pure nodes are `prepare → summarize → complete`, with a configurable delay so progress is visible. No model, payment, email, or external action is called. The list refreshes automatically; each detail page shows the timeline, checkpointed steps, saved state, reconnect status, and recovery events.
+Sign in as the seeded admin, open **Runs**, enter a message, choose a delivery scenario, and choose **Start demo run**. Approvers can start runs too; viewers can inspect them. The nodes are `prepare → summarize → complete`, with a configurable delay so progress is visible. Workflow version 2 queues one local notice at complete; existing version 1 runs remain pure. No model, payment, email, or external action is called. The list refreshes automatically; each detail page shows the timeline, checkpointed steps, saved state, reconnect status, recovery events, effect receipts, and outbox deliveries.
 
 `POST /runs` accepts `{"input":{"message":"Keep this run alive"}}` and returns HTTP 202. The optional workflowId is fixed to `durability-demo`. `GET /runs` supports limit (1–100) and status; `GET /runs/:id` returns state. Routes require a session; creation also requires a trusted Origin and runs:create permission. All runs are in the one local workspace. The server generates run UUIDs; clients never choose LangGraph thread IDs.
 
-The API saves the queued run/event transactionally, then adds a BullMQ job with jobId=runId. Its five-second reconciliation loop (also run at startup) retries pending dispatch after an API crash or Redis outage. It never invokes graphs. The worker uses LangGraph.js 1.7.4 and MongoDBSaver 1.5.1 with thread_id=runId and synchronous durability. Completed nodes are reported after their native checkpoint write; missing notifications are reconciled on resume. An unfinished pure node can run again. External-effect idempotency remains Step 4 work.
+The API saves the queued run/event transactionally, then adds a BullMQ job with jobId=runId. Its five-second reconciliation loop (also run at startup) retries pending dispatch after an API crash or Redis outage. It never invokes graphs. The worker uses LangGraph.js 1.7.4 and MongoDBSaver 1.5.1 with thread_id=runId and synchronous durability. Completed nodes are reported after their native checkpoint write; missing notifications are reconciled on resume. An interrupted node can run again; version 2's local effect uses the durable receipt described below.
 
 `GET /runs/:id/events` streams append-only MongoDB events with numeric per-run SSE IDs. Last-Event-ID resumes strictly after that sequence; a fresh client can use ?after=N. Invalid/ahead cursors are rejected. Completed runs replay through the same endpoint. Heartbeats and session rechecks occur every 15 seconds; writes respect backpressure, headers disable buffering, and disconnects stop polling. The Next.js proxy forwards the streaming body and cursor header. EventSource reconnects automatically; the UI deduplicates sequences and reconstructs history after refresh.
 

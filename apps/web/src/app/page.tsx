@@ -6,7 +6,7 @@ export default function Home() {
     <>
       <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
         <span className="size-1.5 rounded-full bg-emerald-500" />
-        STEP 03 / DURABLE EXECUTION
+        STEP 04 / RELIABILITY LAYER
       </div>
       <h1 className="max-w-3xl text-5xl font-semibold leading-[1.08] tracking-tight md:text-7xl">
         Agents that act.
@@ -60,8 +60,7 @@ export default function Home() {
           ))}
         </div>
         <p className="mt-5 text-xs text-muted-foreground">
-          Platform roadmap preview · Execution and approvals arrive in later
-          steps.
+          Platform roadmap preview · Approvals arrive in a later step.
         </p>
       </section>
       <section className="mt-10 grid gap-8 md:grid-cols-2">

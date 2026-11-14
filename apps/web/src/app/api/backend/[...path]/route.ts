@@ -13,18 +13,25 @@ async function forward(
   const { path } = await context.params;
   const pathname = path.join('/');
   const isRun =
-    pathname === 'runs' || /^runs\/[0-9a-f-]{36}(\/events)?$/.test(pathname);
+    pathname === 'runs' ||
+    /^runs\/[0-9a-f-]{36}(\/(events|reliability))?$/.test(pathname);
+  const isDeadLetter =
+    pathname === 'dead-letters' ||
+    /^dead-letters\/[0-9a-f-]{36}(\/(retry|discard))?$/.test(pathname);
   const stream = isRun && pathname.endsWith('/events');
-  if (!allowedPaths.has(pathname) && !isRun)
+  if (!allowedPaths.has(pathname) && !isRun && !isDeadLetter)
     return NextResponse.json(
       { error: { message: 'Not found' } },
       { status: 404 },
     );
   if (
-    isRun
-      ? request.method !== 'GET' &&
-        !(pathname === 'runs' && request.method === 'POST')
-      : (request.method === 'GET') !== (pathname === 'auth/me')
+    isDeadLetter
+      ? request.method !==
+        (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
+      : isRun
+        ? request.method !== 'GET' &&
+          !(pathname === 'runs' && request.method === 'POST')
+        : (request.method === 'GET') !== (pathname === 'auth/me')
   )
     return NextResponse.json(
       { error: { message: 'Method not allowed' } },

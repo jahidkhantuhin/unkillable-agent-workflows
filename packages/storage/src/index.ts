@@ -1,23 +1,35 @@
 import { randomUUID } from 'node:crypto';
-import { type Db, type MongoClient, type Document } from 'mongodb';
+import {
+  type Db,
+  type MongoClient,
+  type ClientSession,
+  type Document,
+} from 'mongodb';
 import {
   runSchema,
   runEventSchema,
   workflowDefinitionSchema,
   canTransition,
+  StaleExecutionError,
+  type DemoInput,
+  demoWorkflowVersion,
   type Run,
   type RunStatus,
   type RunEvent,
   type EventInput,
 } from '@unkillable/shared';
+import { ReliabilityRepository } from './reliability';
 type Stored = Document & { _id: string };
 export interface RunStore {
-  create(userId: string, input: { message: string }): Promise<Run>;
+  create(userId: string, input: DemoInput): Promise<Run>;
   get(id: string): Promise<Run | null>;
   list(limit: number, status?: RunStatus): Promise<Run[]>;
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  reliability() {
+    return new ReliabilityRepository(this.client, this.db);
+  }
   private readonly runs;
   private readonly log;
   constructor(
@@ -27,7 +39,7 @@ export class RunRepository implements RunStore {
     this.runs = db.collection<Stored>('runs');
     this.log = db.collection<Stored>('runEvents');
   }
-  async create(userId: string, input: { message: string }) {
+  async create(userId: string, input: DemoInput) {
     const now = new Date();
     const run = runSchema.parse({
       id: randomUUID(),
@@ -35,7 +47,7 @@ export class RunRepository implements RunStore {
       updatedAt: now,
       createdBy: userId,
       workflowId: 'durability-demo',
-      workflowVersion: 1,
+      workflowVersion: demoWorkflowVersion,
       status: 'queued',
       state: input,
       sequence: 1,
@@ -92,9 +104,13 @@ export class RunRepository implements RunStore {
         .toArray()
     ).map((value) => runSchema.parse(value));
   }
-  async markDispatched(id: string) {
+  async markDispatched(id: string, execution?: number) {
     await this.runs.updateOne(
-      { _id: id, dispatchPending: true },
+      {
+        _id: id,
+        dispatchPending: true,
+        ...(execution === undefined ? {} : { execution }),
+      },
       { $set: { dispatchPending: false } },
     );
   }
@@ -103,67 +119,91 @@ export class RunRepository implements RunStore {
     await this.db
       .collection<Stored>('workflowDefinitions')
       .updateOne(
-        { _id: parsed.id },
-        { $setOnInsert: { ...parsed, _id: parsed.id } },
+        { id: parsed.id, version: parsed.version },
+        { $setOnInsert: { ...parsed, _id: `${parsed.id}:v${parsed.version}` } },
         { upsert: true },
       );
   }
-  async append(
-    id: string,
-    input: EventInput,
-    options: {
-      key?: string;
-      status?: RunStatus;
-      state?: Record<string, unknown>;
-      error?: string;
-      dispatchPending?: boolean;
-    } = {},
-  ) {
+  async pendingOutboxCount(runId: string) {
+    return this.db
+      .collection('outbox')
+      .countDocuments({ runId, status: 'pending' });
+  }
+  async getInSession(id: string, session: ClientSession) {
+    const value = await this.runs.findOne({ _id: id }, { session });
+    return value ? runSchema.parse(value) : null;
+  }
+  async append(id: string, input: EventInput, options: RunUpdate = {}) {
     const session = this.client.startSession();
     try {
-      return await session.withTransaction(async () => {
-        if (options.key) {
-          const previous = await this.log.findOne(
-            { runId: id, key: options.key },
-            { session },
-          );
-          if (previous) return runEventSchema.parse(previous);
-        }
-        const current = await this.runs.findOne({ _id: id }, { session });
-        if (!current) throw new Error('Run not found');
-        const run = runSchema.parse(current);
-        if (options.status && !canTransition(run.status, options.status))
-          throw new Error(
-            `Invalid run transition: ${run.status} -> ${options.status}`,
-          );
-        if (
-          !options.status &&
-          ['succeeded', 'failed', 'cancelled', 'compensated'].includes(
-            run.status,
-          )
-        )
-          return null;
-        const next = runSchema.parse({
-          ...run,
-          ...options,
-          sequence: run.sequence + 1,
-          updatedAt: new Date(),
-        });
-        const event = runEventSchema.parse({
-          ...input,
-          id: randomUUID(),
-          runId: id,
-          threadId: id,
-          sequence: next.sequence,
-          timestamp: Date.now(),
-          ...(options.key ? { key: options.key } : {}),
-        });
-        await this.runs.updateOne({ _id: id }, { $set: next }, { session });
-        await this.log.insertOne({ ...event, _id: event.id }, { session });
-        return event;
-      });
+      return await session.withTransaction(() =>
+        this.appendInSession(id, input, options, session),
+      );
     } finally {
       await session.endSession();
     }
   }
+  async appendInSession(
+    id: string,
+    input: EventInput,
+    options: RunUpdate,
+    session: ClientSession,
+  ) {
+    const run = await this.getInSession(id, session);
+    if (!run) throw new Error('Run not found');
+    if (
+      options.expectedExecution !== undefined &&
+      run.execution !== options.expectedExecution
+    )
+      throw new StaleExecutionError();
+    if (options.key) {
+      const previous = await this.log.findOne(
+        { runId: id, key: options.key },
+        { session },
+      );
+      if (previous) return runEventSchema.parse(previous);
+    }
+    if (options.status && !canTransition(run.status, options.status))
+      throw new Error(
+        'Invalid run transition: ' + run.status + ' -> ' + options.status,
+      );
+    if (
+      !options.status &&
+      !options.allowTerminal &&
+      ['succeeded', 'failed', 'cancelled', 'compensated'].includes(run.status)
+    )
+      return null;
+    const next = runSchema.parse({
+      ...run,
+      ...options,
+      sequence: run.sequence + 1,
+      updatedAt: new Date(),
+    });
+    const event = runEventSchema.parse({
+      ...input,
+      id: randomUUID(),
+      runId: id,
+      threadId: id,
+      sequence: next.sequence,
+      timestamp: Date.now(),
+      ...(options.key ? { key: options.key } : {}),
+    });
+    const clean = Object.fromEntries(
+      Object.entries(next).filter(([, value]) => value !== undefined),
+    );
+    await this.runs.replaceOne({ _id: id }, { ...clean, _id: id }, { session });
+    await this.log.insertOne({ ...event, _id: event.id }, { session });
+    return event;
+  }
 }
+export type RunUpdate = {
+  key?: string;
+  status?: RunStatus;
+  state?: Record<string, unknown>;
+  error?: string;
+  dispatchPending?: boolean;
+  execution?: number;
+  expectedExecution?: number;
+  allowTerminal?: boolean;
+};
+export * from './reliability';

@@ -3,6 +3,7 @@ export * from './domain';
 export * from './events';
 export * from './auth';
 export * from './runs';
+export * from './reliability';
 
 export const healthSchema = z.object({
   status: z.enum(['ok', 'degraded']),

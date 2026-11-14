@@ -56,6 +56,7 @@ export const runSchema = z.object({
   state: payloadSchema,
   sequence: z.number().int().nonnegative().default(0),
   dispatchPending: z.boolean().default(true),
+  execution: z.number().int().nonnegative().default(0),
   error: z.string().optional(),
   parentRunId: idSchema.optional(),
   forkCheckpointId: idSchema.optional(),
@@ -91,8 +92,15 @@ export const deadLetterSchema = z.object({
   runId: idSchema,
   nodeId: idSchema,
   status: z.enum(['open', 'retried', 'discarded']),
+  execution: z.number().int().nonnegative().default(0),
+  version: z.number().int().nonnegative().default(0),
   attempts: z.number().int().nonnegative(),
-  error: z.object({ code: z.string(), message: z.string() }),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    classification: z.enum(['retryable', 'permanent']).default('permanent'),
+    stack: z.string().optional(),
+  }),
   context: payloadSchema,
 });
 export const outboxSchema = z.object({
@@ -105,6 +113,7 @@ export const outboxSchema = z.object({
   attempts: z.number().int().nonnegative(),
   availableAt: z.date(),
   sentAt: z.date().optional(),
+  lastError: z.string().optional(),
 });
 
 // Better Auth owns persistence for these documents; application-facing data is validated here.
@@ -150,6 +159,8 @@ export const permissionSchema = z.enum([
   'approvals:resolve',
   'chaos:manage',
   'analytics:read',
+  'deadletters:read',
+  'deadletters:manage',
 ]);
 export type Permission = z.infer<typeof permissionSchema>;
 export const rolePermissions: Record<Role, readonly Permission[]> = {
@@ -172,4 +183,5 @@ export const sectionPermissions = {
   approvals: 'approvals:read',
   chaos: 'chaos:manage',
   analytics: 'analytics:read',
+  'dead-letters': 'deadletters:read',
 } as const satisfies Record<string, Permission>;

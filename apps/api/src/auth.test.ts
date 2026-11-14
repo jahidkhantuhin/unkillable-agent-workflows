@@ -238,6 +238,9 @@ describe('RBAC permission matrix', () => {
     ['admin', 'approvals:resolve', true],
     ['admin', 'chaos:manage', true],
     ['admin', 'analytics:read', true],
+    ['viewer', 'deadletters:read', false],
+    ['approver', 'deadletters:manage', false],
+    ['admin', 'deadletters:manage', true],
   ] as const)('%s / %s = %s', (role, permission, allowed) => {
     expect(hasPermission(role, permission)).toBe(allowed);
   });

@@ -8,6 +8,7 @@ const result = spawnSync(
     'run',
     'apps/api/src/database.integration.test.ts',
     'apps/api/src/runs.integration.test.ts',
+    'apps/api/src/reliability.integration.test.ts',
     'apps/worker/src/recovery.integration.test.ts',
   ],
   {

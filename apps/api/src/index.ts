@@ -31,7 +31,13 @@ const auth = createMongoAuth(mongo, memberships, {
   trustedOrigins: config.CORS_ORIGINS,
   production: config.NODE_ENV === 'production',
 });
-const queue = new Queue(config.RUN_QUEUE_NAME, { connection: redis });
+const queue = new Queue(config.RUN_QUEUE_NAME, {
+  connection: redis,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 1000, jitter: 0.2 },
+  },
+});
 queue.on('error', (err) => logger.warn({ err }, 'Run queue unavailable'));
 const runService = new RunService(new RunRepository(mongo), queue, (error) =>
   logger.warn({ err: error }, 'Run persisted; dispatch will be retried'),

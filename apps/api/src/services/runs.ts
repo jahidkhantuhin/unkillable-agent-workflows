@@ -1,11 +1,11 @@
 import { demoDefinition } from '@unkillable/workflows';
 import type { RunRepository } from '@unkillable/storage';
-import type { RunStatus } from '@unkillable/shared';
+import type { RunStatus, DemoInput } from '@unkillable/shared';
 import { HttpError } from '../errors';
 export interface RunQueue {
   add(
     name: string,
-    data: { runId: string },
+    data: { runId: string; execution?: number },
     options: { jobId: string },
   ): Promise<unknown>;
 }
@@ -19,7 +19,7 @@ export class RunService {
   async initialize() {
     await this.repository.definition(demoDefinition);
   }
-  async create(userId: string, input: { message: string }) {
+  async create(userId: string, input: DemoInput) {
     const run = await this.repository.create(userId, input);
     try {
       await this.dispatch(run.id);
@@ -29,8 +29,13 @@ export class RunService {
     return (await this.repository.get(run.id))!;
   }
   private async dispatch(runId: string) {
-    await this.queue.add('execute-run', { runId }, { jobId: runId });
-    await this.repository.markDispatched(runId);
+    const run = await this.get(runId);
+    await this.queue.add(
+      'execute-run',
+      { runId, execution: run.execution },
+      { jobId: run.execution === 0 ? runId : `${runId}-${run.execution}` },
+    );
+    await this.repository.markDispatched(runId, run.execution);
   }
   async reconcile() {
     if (this.recovering) return;
@@ -49,5 +54,9 @@ export class RunService {
   }
   list(limit: number, status?: RunStatus) {
     return this.repository.list(limit, status);
+  }
+  async details(id: string) {
+    await this.get(id);
+    return this.repository.reliability().details(id);
   }
 }

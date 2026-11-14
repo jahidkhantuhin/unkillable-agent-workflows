@@ -128,7 +128,7 @@ describe.skipIf(!uri || !redis)(
       );
       first.kill('SIGKILL');
       await exited;
-      await startWorker();
+      const replacement = await startWorker();
       const result = await until(
         () => repository.get(run.id),
         (value) => value?.status === 'succeeded',
@@ -168,6 +168,58 @@ describe.skipIf(!uri || !redis)(
       expect(events.map((event) => event.sequence)).toEqual(
         Array.from({ length: events.length }, (_, i) => i + 1),
       );
+      await until(
+        () => queue.getJob(run.id).then((job) => job?.getState()),
+        (value) => value === 'completed',
+      );
+      const stopped = new Promise<void>((resolve) =>
+        replacement.once('exit', () => resolve()),
+      );
+      replacement.kill('SIGKILL');
+      await stopped;
+    }, 45000);
+    it('replays a committed effect after a worker kill before its checkpoint without duplicate delivery', async () => {
+      const first = await startWorker();
+      const run = await repository.create('effect-recovery-tester', {
+        message: 'one durable notice',
+      });
+      await queue.add('execute-run', { runId: run.id }, { jobId: run.id });
+      const reliability = repository.reliability();
+      await until(
+        () => reliability.details(run.id),
+        (value) =>
+          value.keys.some(
+            (key) =>
+              key.key === `${run.id}:complete:notice` &&
+              key.status === 'completed',
+          ),
+      );
+      const stopped = new Promise<void>((resolve) =>
+        first.once('exit', () => resolve()),
+      );
+      first.kill('SIGKILL');
+      await stopped;
+      await startWorker();
+      await until(
+        () => repository.get(run.id),
+        (value) => value?.status === 'succeeded',
+      );
+      const details = await until(
+        () => reliability.details(run.id),
+        (value) => value.outbox.some((row) => row.status === 'sent'),
+      );
+      expect(details.outbox).toHaveLength(1);
+      expect(details.deliveries).toHaveLength(1);
+      expect(
+        details.keys.filter((key) => key.key === `${run.id}:complete:notice`),
+      ).toHaveLength(1);
+      const events = await repository.events(run.id, 0);
+      expect(
+        events.filter(
+          (event) =>
+            event.type === 'STEP_STARTED' && event.stepName === 'complete',
+        ),
+      ).toHaveLength(2);
     }, 45000);
     it('finishes after a crash gap following the final checkpoint and ignores terminal redelivery', async () => {
       const run = await repository.create('boundary-tester', {

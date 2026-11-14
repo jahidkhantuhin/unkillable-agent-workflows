@@ -1,9 +1,19 @@
 import { z } from 'zod';
 import { runSchema, runStatusSchema } from './domain';
 import type { RunEvent } from './events';
+import { nodePolicyOverridesSchema } from './reliability';
+export const deliveryModeSchema = z.enum([
+  'normal',
+  'retry-once',
+  'exhaust',
+  'permanent',
+]);
+export const demoWorkflowVersion = 2;
 export const demoInputSchema = z.strictObject({
   message: z.string().trim().min(1).max(500),
+  deliveryMode: deliveryModeSchema.optional(),
 });
+export type DemoInput = z.infer<typeof demoInputSchema>;
 export const demoNodeSchema = z.enum(['prepare', 'summarize', 'complete']);
 export const demoStateSchema = z.object({
   message: z.string(),
@@ -11,6 +21,7 @@ export const demoStateSchema = z.object({
   summary: z.string().default(''),
   result: z.string().default(''),
   completed: z.array(demoNodeSchema).default([]),
+  deliveryMode: deliveryModeSchema.default('normal'),
 });
 export type DemoState = z.infer<typeof demoStateSchema>;
 export type DemoNode = z.infer<typeof demoNodeSchema>;
@@ -26,6 +37,11 @@ export const workerConfigSchema = runQueueConfigSchema.extend({
   WORKER_STALLED_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
   WORKER_MAX_STALLED_COUNT: z.coerce.number().int().min(1).max(100).default(3),
   DEMO_NODE_DELAY_MS: z.coerce.number().int().min(0).max(10000).default(1500),
+  NODE_RETRY_POLICIES: nodePolicyOverridesSchema.refine(
+    (value) =>
+      Object.keys(value).every((key) => demoNodeSchema.safeParse(key).success),
+    { message: 'Retry policy keys must name demo nodes' },
+  ),
 });
 export const createRunSchema = z.strictObject({
   workflowId: z.literal('durability-demo').default('durability-demo'),
@@ -71,7 +87,7 @@ export const transitions: Record<RunStatus, readonly RunStatus[]> = {
   waiting_approval: ['queued', 'failed', 'cancelled'],
   compensating: ['compensated', 'failed'],
   succeeded: [],
-  failed: [],
+  failed: ['queued'],
   compensated: [],
   cancelled: [],
 };

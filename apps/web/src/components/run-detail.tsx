@@ -8,13 +8,19 @@ import {
   type RunEvent,
 } from '@unkillable/shared';
 import { RunStatus } from './runs-list';
+import { ReliabilityPanel } from './reliability-panel';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
   if (event.type === 'CUSTOM')
-    return event.name === 'run.resumed'
-      ? 'Worker resumed from checkpoint'
-      : event.name.replaceAll('.', ' ');
+    if (event.name === 'retry.scheduled')
+      return `${String(event.value.nodeId)} retry ${String(event.value.nextAttempt)} in ${String(event.value.delayMs)} ms`;
+    else if (event.name === 'node.attempt')
+      return `${String(event.value.nodeId)} attempt ${String(event.value.attempt)}`;
+    else
+      return event.name === 'run.resumed'
+        ? 'Worker resumed from checkpoint'
+        : event.name.replaceAll('.', ' ');
   return event.type.toLowerCase().replaceAll('_', ' ');
 }
 export function RunDetail({ initial }: { initial: RunDTO }) {
@@ -22,6 +28,8 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [connection, setConnection] = useState('Connecting');
   useEffect(() => {
+    setRun(initial);
+    setEvents([]);
     const stream = new EventSource(`/api/backend/runs/${initial.id}/events`);
     stream.onopen = () => setConnection('Live');
     stream.onerror = () => setConnection('Reconnecting…');
@@ -51,6 +59,13 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
           ...(event.type === 'RUN_ERROR'
             ? { status: 'failed' as const, error: event.message }
             : {}),
+          ...(event.type === 'CUSTOM' && event.name === 'run.retried'
+            ? {
+                status: 'queued' as const,
+                execution: Number(event.value.execution),
+                error: undefined,
+              }
+            : {}),
         };
       });
     });
@@ -64,7 +79,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         .catch(() => {});
     });
     return () => stream.close();
-  }, [initial.id]);
+  }, [initial.id, initial.execution]);
   return (
     <>
       <Link
@@ -85,6 +100,15 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         </div>
         <RunStatus status={run.status} />
       </div>
+      <ReliabilityPanel runId={run.id} />
+      {run.status === 'failed' && (
+        <Link
+          href="/dead-letters"
+          className="mt-4 inline-block text-sm underline text-muted-foreground"
+        >
+          Inspect failure in Dead Letters (admin)
+        </Link>
+      )}
       <div className="mt-8 flex flex-wrap gap-3">
         {['prepare', 'summarize', 'complete'].map((step) => (
           <span

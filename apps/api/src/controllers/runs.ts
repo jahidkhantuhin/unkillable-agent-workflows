@@ -34,6 +34,12 @@ export function getRun(service: RunService): RequestHandler {
     res.json(runToDTO(await service.get(res.locals.params.id)));
   };
 }
+export function getReliability(service: RunService): RequestHandler {
+  return async (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(await service.details(res.locals.params.id));
+  };
+}
 async function write(response: Response, frame: string) {
   if (response.destroyed || response.writableEnded) return;
   if (response.write(frame)) return;
@@ -93,9 +99,15 @@ export function streamRun(
           cursor = event.sequence;
         }
         run = await service.get(id);
-        if (terminalStatuses.includes(run.status) && cursor >= run.sequence) {
-          await write(res, 'event: stream-end\ndata: {}\n\n');
-          break;
+        if (
+          terminalStatuses.includes(run.status) &&
+          (await service.repository.pendingOutboxCount(id)) === 0
+        ) {
+          const latest = await service.get(id);
+          if (cursor >= latest.sequence) {
+            await write(res, 'event: stream-end\ndata: {}\n\n');
+            break;
+          }
         }
         if (events.length < 200)
           await delay(500, undefined, { signal: controller.signal });

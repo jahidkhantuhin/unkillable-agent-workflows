@@ -8,6 +8,11 @@ import {
   type DemoNode,
 } from '@unkillable/shared';
 type Hooks = {
+  runNode?: (
+    runId: string,
+    node: DemoNode,
+    operation: () => Promise<Partial<DemoState>>,
+  ) => Promise<Partial<DemoState>>;
   stepStarted: (runId: string, node: DemoNode) => Promise<void>;
   checkpoint: (
     runId: string,
@@ -77,13 +82,20 @@ export function buildDemoGraph(
       config: { configurable?: Record<string, unknown> },
     ) => {
       await hooks.stepStarted(String(config.configurable?.thread_id), name);
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-      return demoNodeOutput(name, state);
+      const operation = async () => {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        return demoNodeOutput(name, state);
+      };
+      return hooks.runNode
+        ? hooks.runNode(String(config.configurable?.thread_id), name, operation)
+        : operation();
     };
   return new StateGraph(schema)
-    .addNode('prepare', node('prepare'))
-    .addNode('summarize', node('summarize'))
-    .addNode('complete', node('complete'))
+    .addNode('prepare', node('prepare'), { retryPolicy: { maxAttempts: 1 } })
+    .addNode('summarize', node('summarize'), {
+      retryPolicy: { maxAttempts: 1 },
+    })
+    .addNode('complete', node('complete'), { retryPolicy: { maxAttempts: 1 } })
     .addEdge(START, 'prepare')
     .addEdge('prepare', 'summarize')
     .addEdge('summarize', 'complete')
