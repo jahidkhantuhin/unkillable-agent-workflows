@@ -5,7 +5,7 @@
   "type": "module",
   "author": "Jahid Khan Tuhin",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "typecheck": "tsc --noEmit"
   },

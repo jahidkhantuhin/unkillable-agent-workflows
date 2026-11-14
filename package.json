@@ -5,7 +5,8 @@
   "type": "module",
   "author": "Jahid Khan Tuhin",
   "scripts": {
-    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:stop": "node scripts/dev.mjs --stop",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",

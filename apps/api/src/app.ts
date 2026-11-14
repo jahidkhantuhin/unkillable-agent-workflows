@@ -26,6 +26,18 @@ export function createApp(
   app.use(
     pinoHttp({
       level,
+      serializers: {
+        req: (req) => ({ id: req.id, method: req.method, url: req.url }),
+        res: (res) => ({ statusCode: res.statusCode }),
+      },
+      customLogLevel: (req, res, error) =>
+        error || res.statusCode >= 500
+          ? 'error'
+          : res.statusCode >= 400
+            ? 'warn'
+            : req.method === 'GET'
+              ? 'debug'
+              : 'info',
       redact: [
         'req.headers.cookie',
         'req.headers.authorization',

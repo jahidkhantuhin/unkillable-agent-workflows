@@ -24,6 +24,16 @@ pnpm dev
 
 Open http://localhost:3000. The API badge turns green when MongoDB and Redis are reachable. The worker logs `Worker ready`, then its health every 30 seconds. The API is at http://localhost:4000/health; Mailpit is at http://localhost:8025. Stop app processes with Ctrl+C and infrastructure with `docker compose stop` (retains data).
 
+`pnpm dev` now uses a managed launcher for web/API/worker rather than nested parallel package-manager processes. Ctrl+C stops the complete development process trees. If the original terminal is stuck, open another terminal in this repository and run:
+
+```powershell
+pnpm dev:stop
+```
+
+The fallback verifies recorded process commands belong to this workspace before stopping them. It handles sessions started with the root `pnpm dev`; Docker services remain running. Duplicate managed sessions are refused. Windows development shutdown terminates the child trees, so an interrupted active run may repeat its unfinished step after restart; checkpoints and effect receipts still protect committed work. Unix shutdown sends termination to each process group with a bounded force-stop fallback.
+
+Successful API GET requests log at debug level instead of flooding info output; errors and mutations remain visible, and request/response logs omit headers. Use the existing LOG_LEVEL=debug setting when investigating polling requests. Periodic run/health GETs are expected background updates, not page reloads. Stop the dev session before running production builds/checks to avoid generated-file interference.
+
 MongoDB runs as a single-node replica set. The one-shot initializer safely initiates `rs0` on a fresh volume. Host applications use `directConnection=true` because the replica set advertises the internal Compose hostname `mongo`. Services bind only to local loopback ports. This setup is for local development.
 
 API and worker load the root `.env`. Existing Step 1 installations must add `BETTER_AUTH_SECRET` (a private random value, at least 32 characters) and `BETTER_AUTH_URL=http://localhost:4000`. Keep `CORS_ORIGINS=http://localhost:3000`; auth mutations require an allowed `Origin` header. No model, payment, SMTP, or Telegram credentials are needed.
@@ -31,6 +41,48 @@ API and worker load the root `.env`. Existing Step 1 installations must add `BET
 For a custom API address, set `API_INTERNAL_URL` in `apps/web/.env.local` and update `NEXT_PUBLIC_API_URL` there for the health proxy. Both default to `http://localhost:4000`. The signing secret belongs only in the API environment; never expose it through a `NEXT_PUBLIC_` variable.
 
 The header and navigation receive a server-verified session with the initial page, avoiding a second verification request after hydration. Requests without cookies skip the session API. Session checks are shared only within each server render, not across users/requests; pages remain private and dynamic. Focus refresh still checks current permissions, concurrent refreshes share one request, and a failed or timed-out check offers Retry instead of an indefinite Checking session message. `pnpm dev` still compiles pages on first access after startup; that development compilation can take time even when session verification is ready. See the [Next.js authentication guide](https://nextjs.org/docs/app/guides/authentication) for request-scoped session loading.
+
+## Development bundler: why Webpack
+
+A bundler prepares application code and assets for the browser and server. Next.js supports both Turbopack and Webpack; changing the development bundler does not change this app's workflows, authentication, or database behavior.
+
+| Aspect             | Turbopack                                                                                    | Webpack                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Approach           | Rust-based incremental bundler built into Next.js; designed for fast compilation and updates | JavaScript-based bundler with a mature loader/plugin ecosystem        |
+| Next.js 16 default | Used by plain `next dev` and `next build`                                                    | Explicitly selected with `--webpack`                                  |
+| Configuration      | Uses Next.js's `turbopack` options; does not apply a custom `webpack()` configuration        | Uses Next.js's `webpack()` hook and supported Webpack loaders/plugins |
+| Current use here   | Production web builds via `pnpm build`                                                       | Local web development via `pnpm dev` or the web app's dev script      |
+
+**Why we switched development:** on this Windows setup with Next.js 16.4.6, the Turbopack dev session repeatedly recompiled and fully reloaded the browser without source edits. It disrupted the page and generated repeated API requests. With `next dev --webpack`, the observed loop stopped and unsent form text stayed intact during background polling. The exact upstream trigger is unconfirmed; this is a verified local stability workaround, not a claim that Turbopack is generally unreliable or that Webpack is faster. No comparative performance benchmark was run. Webpack still supports automatic updates after actual source edits, and first compilation still takes time.
+
+Only development changed: `scripts/dev.mjs` and `apps/web/package.json` select `next dev --webpack`; production still runs `next build` with Turbopack. The stuck-terminal issue was handled separately by the managed launcher and `pnpm dev:stop`; selecting Webpack alone does not guarantee process cleanup. See [the verification record](docs/PROGRESS.md#step-5-follow-up-dev-reload-loop-and-terminal-shutdown) for the browser and shutdown checks. Any future return to Turbopack should repeat the idle-page, source-edit refresh, startup, and shutdown checks on this setup.
+
+### Production builds with Turbopack
+
+Production already uses Turbopack: the web build script is `next build`, which selects Turbopack by default in the installed Next.js 16.4.6. The development-only `--webpack` flag does not carry over to builds. Stop the dev session first, then build the workspace:
+
+```powershell
+pnpm dev:stop
+pnpm build
+```
+
+To explicitly select Turbopack for a web production build, including when switching back from a Webpack build command, use:
+
+```powershell
+pnpm --filter @unkillable/web exec next build --turbopack
+```
+
+For a permanent production selection, set `apps/web/package.json`'s build script to `next build --turbopack` (replace `next build --webpack` if present). The existing plain `next build` already has the same bundler selection, so no edit is needed in this checkout. Keep the web dev script and managed launcher's `next dev --webpack` unchanged if you want to retain the local stability workaround.
+
+After a successful build, serve the production web app with:
+
+```powershell
+pnpm --filter @unkillable/web exec next start
+```
+
+The API, worker and infrastructure must also be running with their deployment configuration. `next start` serves the generated build; it does not choose or switch bundlers at runtime. Confirm the build output reports Turbopack. Before deploying a changed bundler configuration, run the normal `pnpm check` and `pnpm test:integration` checks.
+
+Official references: [Next.js Turbopack](https://nextjs.org/docs/app/api-reference/turbopack), [Next.js CLI bundler options](https://nextjs.org/docs/app/api-reference/cli/next), and [Webpack concepts](https://webpack.js.org/concepts/).
 
 ## Authentication and roles (Step 2)
 

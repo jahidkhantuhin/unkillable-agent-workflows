@@ -83,7 +83,10 @@ async function shutdown() {
   closing = true;
   clearInterval(dispatchTimer);
   closeRunStreams();
-  const timeout = setTimeout(() => process.exit(1), 10000).unref();
+  const timeout = setTimeout(() => {
+    server.closeAllConnections();
+    process.exit(1);
+  }, 10000).unref();
   server.close(async () => {
     await queue.close();
     await mongo.close();
@@ -91,6 +94,7 @@ async function shutdown() {
     clearTimeout(timeout);
     logger.info('API stopped');
   });
+  server.closeIdleConnections();
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
