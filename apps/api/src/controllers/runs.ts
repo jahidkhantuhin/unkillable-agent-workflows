@@ -40,6 +40,12 @@ export function getReliability(service: RunService): RequestHandler {
     res.json(await service.details(res.locals.params.id));
   };
 }
+export function getGraph(service: RunService): RequestHandler {
+  return async (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(await service.graph(res.locals.params.id));
+  };
+}
 async function write(response: Response, frame: string) {
   if (response.destroyed || response.writableEnded) return;
   if (response.write(frame)) return;

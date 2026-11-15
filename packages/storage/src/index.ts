@@ -177,6 +177,12 @@ export class RunRepository implements RunStore {
         { upsert: true },
       );
   }
+  async getDefinition(id: string, version: number) {
+    const doc = await this.db
+      .collection('workflowDefinitions')
+      .findOne({ id, version });
+    return doc ? workflowDefinitionSchema.parse(doc) : null;
+  }
   async pendingOutboxCount(runId: string) {
     return this.db
       .collection('outbox')

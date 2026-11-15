@@ -23,7 +23,11 @@ type Hooks = {
     node: DemoNode,
     operation: () => Promise<Partial<DemoState>>,
   ) => Promise<Partial<DemoState>>;
-  stepStarted: (runId: string, node: DemoNode) => Promise<void>;
+  stepStarted: (
+    runId: string,
+    node: DemoNode,
+    state: DemoState,
+  ) => Promise<void>;
   checkpoint: (
     runId: string,
     state: DemoState,
@@ -104,7 +108,11 @@ export function buildDemoGraph(
       state: DemoState,
       config: { configurable?: Record<string, unknown> },
     ) => {
-      await hooks.stepStarted(String(config.configurable?.thread_id), name);
+      await hooks.stepStarted(
+        String(config.configurable?.thread_id),
+        name,
+        state,
+      );
       const operation = async () => {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         return demoNodeOutput(name, state);
@@ -128,6 +136,7 @@ export function buildDemoGraph(
         await hooks.stepStarted(
           String(config.configurable?.thread_id),
           'approval',
+          state,
         );
         // Keep interrupt outside the retry wrapper: GraphInterrupt is control flow.
         const decision = approvalDecisionSchema.parse(

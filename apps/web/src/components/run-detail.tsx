@@ -1,17 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  runEventSchema,
-  runDTOSchema,
-  type RunDTO,
-  type RunEvent,
-  supportNodeSchema,
-} from '@unkillable/shared';
+import { type RunDTO, type RunEvent } from '@unkillable/shared';
 import { RunStatus } from './runs-list';
 import { ReliabilityPanel } from './reliability-panel';
 import { RunScenario, runTitle } from './run-scenario';
 import { SupportOutputs } from './support-outputs';
+import { WorkflowGraph } from './workflow-graph';
+import { advanceRun, mergeEvents } from '../lib/run-model';
+import { observeRun } from '../lib/run-stream';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
@@ -46,72 +43,14 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
   useEffect(() => {
     setRun(initial);
     setEvents([]);
-    const stream = new EventSource(`/api/backend/runs/${initial.id}/events`);
-    stream.onopen = () => setConnection('Live');
-    stream.onerror = () => setConnection('Reconnecting…');
-    stream.addEventListener('run-event', (message: MessageEvent) => {
-      const parsed = runEventSchema.safeParse(JSON.parse(message.data));
-      if (!parsed.success) {
-        setConnection('Invalid event received');
-        return;
-      }
-      const event = parsed.data;
-      setEvents((previous) =>
-        previous.some((item) => item.sequence === event.sequence)
-          ? previous
-          : [...previous, event].sort((a, b) => a.sequence - b.sequence),
-      );
-      setRun((previous) => {
-        if (event.sequence <= previous.sequence) return previous;
-        return {
-          ...previous,
-          sequence: event.sequence,
-          updatedAt: new Date(event.timestamp).toISOString(),
-          ...(event.type === 'STATE_SNAPSHOT' ? { state: event.snapshot } : {}),
-          ...(event.type === 'RUN_STARTED'
-            ? { status: 'running' as const }
-            : {}),
-          ...(event.type === 'RUN_FINISHED' ? { status: event.outcome } : {}),
-          ...(event.type === 'RUN_ERROR'
-            ? { status: 'failed' as const, error: event.message }
-            : {}),
-          ...(event.type === 'CUSTOM' && event.name === 'run.retried'
-            ? {
-                status: 'queued' as const,
-                execution: Number(event.value.execution),
-                error: undefined,
-              }
-            : {}),
-          ...(event.type === 'CUSTOM' && event.name === 'approval.requested'
-            ? { status: 'waiting_approval' as const }
-            : {}),
-          ...(event.type === 'CUSTOM' && event.name === 'compensation.started'
-            ? {
-                status: 'compensating' as const,
-                ...(typeof event.value.failure === 'string'
-                  ? { error: event.value.failure }
-                  : {}),
-              }
-            : {}),
-          ...(event.type === 'CUSTOM' && event.name === 'approval.resolved'
-            ? {
-                status: 'queued' as const,
-                execution: Number(event.value.execution),
-              }
-            : {}),
-        };
-      });
+    return observeRun(initial.id, {
+      event: (event) => {
+        setEvents((previous) => mergeEvents(previous, [event]));
+        setRun((previous) => advanceRun(previous, event));
+      },
+      status: setConnection,
+      snapshot: setRun,
     });
-    stream.addEventListener('stream-end', () => {
-      setConnection('Replay complete');
-      stream.close();
-      void fetch(`/api/backend/runs/${initial.id}`, { cache: 'no-store' })
-        .then(async (response) => {
-          if (response.ok) setRun(runDTOSchema.parse(await response.json()));
-        })
-        .catch(() => {});
-    });
-    return () => stream.close();
   }, [initial.id, initial.execution]);
   return (
     <>
@@ -139,6 +78,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         </div>
         <RunStatus status={run.status} />
       </div>
+      <WorkflowGraph run={run} events={events} />
       {['compensating', 'compensated'].includes(run.status) && (
         <section
           role="status"
@@ -207,21 +147,6 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
           Inspect failure in Dead Letters (admin)
         </Link>
       )}
-      <div className="mt-8 flex flex-wrap gap-3">
-        {(support
-          ? supportNodeSchema.options
-          : run.state.requireApproval
-            ? ['prepare', 'summarize', 'approval', 'complete']
-            : ['prepare', 'summarize', 'complete']
-        ).map((step) => (
-          <span
-            key={step}
-            className={`rounded-lg border px-4 py-3 text-sm ${events.some((event) => event.type === 'STEP_FINISHED' && event.stepName === step) ? 'border-emerald-500/40 text-emerald-500' : 'border-border text-muted-foreground'}`}
-          >
-            {step}
-          </span>
-        ))}
-      </div>
       <div className="mt-8 grid gap-6 xl:grid-cols-[1.1fr_1fr]">
         <section className="rounded-2xl border border-border p-6">
           <div className="flex flex-wrap justify-between gap-3">

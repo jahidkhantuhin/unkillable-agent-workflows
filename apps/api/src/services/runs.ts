@@ -72,4 +72,46 @@ export class RunService {
     await this.get(id);
     return this.repository.reliability().details(id);
   }
+  async graph(id: string) {
+    const run = await this.get(id);
+    const stored = await this.repository.getDefinition(
+      run.workflowId,
+      run.workflowVersion,
+    );
+    const definition =
+      stored ??
+      (run.workflowId === 'durability-demo' && run.workflowVersion <= 3
+        ? { ...demoDefinition, version: run.workflowVersion }
+        : null);
+    if (!definition)
+      throw new HttpError(
+        404,
+        'DEFINITION_NOT_FOUND',
+        'Workflow definition not found',
+      );
+    const nodes = definition.nodes.filter(
+      (node) =>
+        node.id !== 'approval' ||
+        run.workflowId !== 'durability-demo' ||
+        (run.workflowVersion >= 3 && Boolean(run.state.requireApproval)),
+    );
+    const ids = new Set(nodes.map((node) => node.id));
+    const edges = definition.edges.filter(
+      (edge) =>
+        ids.has(edge.source) &&
+        ids.has(edge.target) &&
+        !(
+          Boolean(run.state.requireApproval) &&
+          edge.source === 'summarize' &&
+          edge.target === 'complete'
+        ),
+    );
+    return {
+      id: definition.id,
+      name: definition.name,
+      version: run.workflowVersion,
+      nodes,
+      edges,
+    };
+  }
 }

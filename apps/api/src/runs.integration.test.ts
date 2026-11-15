@@ -106,6 +106,27 @@ describe.skipIf(!uri)('run API and append-only event integration', () => {
     expect(created.body.status).toBe('queued');
     expect(created.body.dispatchPending).toBe(true);
     const id = created.body.id as string;
+    expect((await request(app).get(`/runs/${id}/graph`)).status).toBe(401);
+    const definition = await request(app)
+      .get(`/runs/${id}/graph`)
+      .set('Cookie', cookie);
+    expect(definition.status).toBe(200);
+    expect(
+      definition.body.nodes.map((node: { id: string }) => node.id),
+    ).toEqual(['prepare', 'summarize', 'complete']);
+    const gated = await repository.create(signed.body.user.id, {
+      message: 'Review graph',
+      requireApproval: true,
+    });
+    await repository.markDispatched(gated.id);
+    expect((await service.graph(gated.id)).edges).toContainEqual({
+      source: 'summarize',
+      target: 'approval',
+    });
+    expect((await service.graph(gated.id)).edges).not.toContainEqual({
+      source: 'summarize',
+      target: 'complete',
+    });
     unavailable = false;
     // A new service represents an API restart between persisting and enqueueing.
     const restarted = new RunService(repository, {

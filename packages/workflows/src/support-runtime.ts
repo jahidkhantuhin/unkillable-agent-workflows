@@ -22,7 +22,11 @@ import {
 } from './support';
 export type SupportHooks = {
   approvalFinished?: (runId: string) => Promise<void>;
-  stepStarted: (runId: string, node: SupportNode) => Promise<void>;
+  stepStarted: (
+    runId: string,
+    node: SupportNode,
+    state: SupportState,
+  ) => Promise<void>;
   checkpoint: (runId: string, state: SupportState, id: string) => Promise<void>;
   runNode: (
     runId: string,
@@ -130,7 +134,7 @@ export async function createSupportRuntime(
       config: { configurable?: Record<string, unknown> },
     ) => {
       const runId = String(config.configurable?.thread_id);
-      await hooks.stepStarted(runId, name);
+      await hooks.stepStarted(runId, name, state);
       return hooks.runNode(runId, name, () =>
         supportNodeOutput(name, runId, state, deps),
       );
@@ -155,6 +159,7 @@ export async function createSupportRuntime(
         await hooks.stepStarted(
           String(config.configurable?.thread_id),
           'approval',
+          state,
         );
         const decision = approvalDecisionSchema.parse(
           interrupt({

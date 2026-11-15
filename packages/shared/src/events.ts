@@ -20,8 +20,16 @@ export const runEventSchema = z.discriminatedUnion('type', [
     message: z.string(),
     code: z.string(),
   }),
-  base.extend({ type: z.literal('STEP_STARTED'), ...step }),
-  base.extend({ type: z.literal('STEP_FINISHED'), ...step }),
+  base.extend({
+    type: z.literal('STEP_STARTED'),
+    ...step,
+    input: z.record(z.string(), z.unknown()).optional(),
+  }),
+  base.extend({
+    type: z.literal('STEP_FINISHED'),
+    ...step,
+    output: z.record(z.string(), z.unknown()).optional(),
+  }),
   base.extend({
     type: z.literal('STATE_SNAPSHOT'),
     snapshot: z.record(z.string(), z.unknown()),

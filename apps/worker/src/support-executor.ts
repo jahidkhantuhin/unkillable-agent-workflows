@@ -33,7 +33,7 @@ export async function createSupportExecutor(
     for (const stepName of state.completed)
       await repository.append(
         runId,
-        { type: 'STEP_FINISHED', stepName },
+        { type: 'STEP_FINISHED', stepName, output: state },
         {
           key: `step:${stepName}:finished`,
           expectedExecution: active.get(runId),
@@ -66,10 +66,10 @@ export async function createSupportExecutor(
           ),
         ),
       checkpoint,
-      stepStarted: async (runId, stepName) => {
+      stepStarted: async (runId, stepName, state) => {
         await repository.append(
           runId,
-          { type: 'STEP_STARTED', stepName },
+          { type: 'STEP_STARTED', stepName, input: state },
           { expectedExecution: active.get(runId) },
         );
         if (stepName === 'approval')

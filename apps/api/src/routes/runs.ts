@@ -12,6 +12,7 @@ import {
   listRuns,
   streamRun,
   getReliability,
+  getGraph,
 } from '../controllers/runs';
 import type { RunService } from '../services/runs';
 import type { AuthService } from '../services/auth';
@@ -51,6 +52,12 @@ export function runsRoutes(
     requireAuth(auth, 'runs:read'),
     validate(runIdParamsSchema, 'params'),
     getReliability(service),
+  );
+  router.get(
+    '/:id/graph',
+    requireAuth(auth, 'runs:read'),
+    validate(runIdParamsSchema, 'params'),
+    getGraph(service),
   );
   return router;
 }

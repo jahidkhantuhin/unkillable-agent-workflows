@@ -7,3 +7,5 @@ coverage/
 *.log
 *.tsbuildinfo
 /docs/BUILD-PROMPT.md
+test-results/
+playwright-report/

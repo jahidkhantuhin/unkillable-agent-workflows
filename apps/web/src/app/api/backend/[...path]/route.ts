@@ -14,7 +14,7 @@ async function forward(
   const pathname = path.join('/');
   const isRun =
     pathname === 'runs' ||
-    /^runs\/[0-9a-f-]{36}(\/(events|reliability))?$/.test(pathname);
+    /^runs\/[0-9a-f-]{36}(\/(events|reliability|graph))?$/.test(pathname);
   const isDeadLetter =
     pathname === 'dead-letters' ||
     /^dead-letters\/[0-9a-f-]{36}(\/(retry|discard))?$/.test(pathname);

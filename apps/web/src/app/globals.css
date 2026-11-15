@@ -1,4 +1,21 @@
 @import 'tailwindcss';
+
+@keyframes approval-glow {
+  50% {
+    box-shadow: 0 0 0 7px rgb(245 158 11 / 18%);
+  }
+}
+.approval-pulse {
+  animation: approval-glow 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .approval-pulse {
+    animation: none;
+  }
+  .react-flow__edge.animated path {
+    animation: none;
+  }
+}
 @custom-variant dark (&:is(.dark *));
 :root {
   --background: #fafbf9;

@@ -11,6 +11,7 @@
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
+    "test:e2e": "node --env-file-if-exists=.env node_modules/@playwright/test/cli.js test",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "build": "pnpm -r build",
     "prepare": "node scripts/prepare.mjs",
@@ -21,15 +22,16 @@
   "dependencies": {},
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "typescript-eslint": "latest",
-    "eslint": "10.14.0",
-    "prettier": "latest",
-    "typescript": "6.0.3",
-    "tsx": "latest",
-    "vitest": "latest",
+    "@playwright/test": "1.65.1",
     "@types/node": "latest",
+    "eslint": "10.14.0",
     "husky": "latest",
-    "lint-staged": "latest"
+    "lint-staged": "latest",
+    "prettier": "latest",
+    "tsx": "latest",
+    "typescript": "6.0.3",
+    "typescript-eslint": "latest",
+    "vitest": "latest"
   },
   "packageManager": "pnpm@12.16.1",
   "engines": {

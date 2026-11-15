@@ -6,7 +6,24 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–7 provide durable execution, human approval, a support ticket router, reverse-order compensation, and optional Redis-controlled fault hooks. Runs survive worker restarts and expose live timelines and effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The Chaos UI and measured chaos report remain later steps; no chaos-report numbers are claimed.
+Steps 1–8 provide durable execution, human approval, a support ticket router, reverse-order compensation, optional Redis-controlled fault hooks, and a live React Flow graph with node inspection and grouped timeline. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The Chaos UI and measured chaos report remain later steps; no chaos-report numbers are claimed.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Human[User / reviewer] --> Web[Next.js dashboard]
+  Web --> API[Express API / auth and RBAC]
+  API --> Mongo[(MongoDB runs / events / approvals)]
+  API --> Queue[Redis / BullMQ]
+  Queue --> Worker[Worker / LangGraph]
+  Worker --> Checkpoints[(MongoDB checkpoints)]
+  Worker --> Mongo
+  Worker --> Fake[Fake refund ledger]
+  Worker --> Mailpit[Local Mailpit SMTP]
+  Mongo --> SSE[SSE replay / live events]
+  SSE --> Web
+```
 
 ## Quickstart
 
@@ -122,6 +139,14 @@ Open **Runs → New ticket** as an admin or approver. Load the duplicate-charge 
 Compose enables persistent Mailpit storage and duplicate Message-ID suppression. Replays use a stable ID; this receiver setting closes the SMTP acceptance/acknowledgement gap. Keep deduplication and retained messages intact; this is a local Mailpit guarantee, not a generic exactly-once SMTP claim. Step 7 now compensates committed support effects after terminal node failure, as described below.
 
 See [docs/STEP-6.md](docs/STEP-6.md) for all example outcomes, new environment variables, adapter contracts, safety boundaries, retry/DLQ behavior and tests. Apply the updated Compose configuration with `docker compose up -d` before testing email capture. Stop dev and run `pnpm check` plus `pnpm test:integration` for verification.
+
+## Live graph and node timeline (Step 8)
+
+Every run timeline loads its versioned workflow definition into React Flow. Nodes show pending, running, succeeded, failed, pulsing waiting approval, retrying and compensation states. Edges animate toward active work; orange dashed edges show reverse compensation. Select a node to inspect recorded input/output, attempts and wall-clock elapsed duration. The grouped node timeline includes retry markers and reviewer identity/decision, while the raw ordered event log remains available below.
+
+Fresh pages replay saved events from sequence zero. Reconnects resume after the last accepted event, deduplicate replay and recover gaps; final run state is refreshed when the stream completes. New runs persist node input/output with their start/checkpoint events. Older events remain valid, and missing historical payloads/timing are labelled unavailable instead of invented. Elapsed duration includes retries, downtime and human review.
+
+See [docs/STEP-8.md](docs/STEP-8.md) for a short walkthrough, graph semantics and verification. `pnpm check` and `pnpm test:integration` cover the code/API; after a build, `pnpm exec playwright install chromium` then `pnpm test:e2e` runs the isolated approval-pulse/reload smoke test. The intended release milestone is v0.5; no Git tag is created automatically because the user manages commits and tags.
 
 ## Compensation and fault hooks (Step 7)
 
