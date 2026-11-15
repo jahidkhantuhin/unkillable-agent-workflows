@@ -14,7 +14,7 @@ import { RunScenario, runTitle } from './run-scenario';
 export function RunStatus({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex rounded-full border px-3 py-1 text-xs ${status === 'succeeded' ? 'border-emerald-500/40 text-emerald-500' : status === 'failed' ? 'border-red-500/40 text-red-500' : status === 'waiting_approval' ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'border-border text-muted-foreground'}`}
+      className={`inline-flex rounded-full border px-3 py-1 text-xs ${status === 'succeeded' ? 'border-emerald-500/40 text-emerald-500' : status === 'compensated' ? 'border-sky-500/40 text-sky-600 dark:text-sky-400' : status === 'compensating' ? 'border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-400' : status === 'failed' ? 'border-red-500/40 text-red-500' : status === 'waiting_approval' ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'border-border text-muted-foreground'}`}
     >
       {status.replaceAll('_', ' ')}
     </span>

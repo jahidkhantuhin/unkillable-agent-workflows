@@ -26,7 +26,9 @@ function label(event: RunEvent) {
     return `Approval: ${action} · reviewer ${String(event.value.actorId)}`;
   }
   if (event.type === 'CUSTOM')
-    if (event.name === 'retry.scheduled')
+    if (event.name.startsWith('compensation.'))
+      return `${event.name.replaceAll('.', ' ')}${event.value.nodeId ? ` · ${String(event.value.nodeId)}` : ''}`;
+    else if (event.name === 'retry.scheduled')
       return `${String(event.value.nodeId)} retry ${String(event.value.nextAttempt)} in ${String(event.value.delayMs)} ms`;
     else if (event.name === 'node.attempt')
       return `${String(event.value.nodeId)} attempt ${String(event.value.attempt)}`;
@@ -83,6 +85,14 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
           ...(event.type === 'CUSTOM' && event.name === 'approval.requested'
             ? { status: 'waiting_approval' as const }
             : {}),
+          ...(event.type === 'CUSTOM' && event.name === 'compensation.started'
+            ? {
+                status: 'compensating' as const,
+                ...(typeof event.value.failure === 'string'
+                  ? { error: event.value.failure }
+                  : {}),
+              }
+            : {}),
           ...(event.type === 'CUSTOM' && event.name === 'approval.resolved'
             ? {
                 status: 'queued' as const,
@@ -129,6 +139,26 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         </div>
         <RunStatus status={run.status} />
       </div>
+      {['compensating', 'compensated'].includes(run.status) && (
+        <section
+          role="status"
+          className="mt-6 rounded-xl border border-orange-500/40 bg-orange-500/10 p-5 text-sm"
+        >
+          <h2 className="font-semibold">
+            {run.status === 'compensating'
+              ? 'Compensating local effects'
+              : 'Compensation completed'}
+          </h2>
+          <p className="mt-2">
+            {run.status === 'compensating'
+              ? 'The workflow failed. Recorded effects are being undone in reverse order. Recovery resumes when a worker is available.'
+              : 'Recorded effects were compensated. The ticket is open for follow-up; the original reply remains in Mailpit alongside its correction.'}
+          </p>
+          {run.error && (
+            <p className="mt-2 break-words">Original failure: {run.error}</p>
+          )}
+        </section>
+      )}
       <ReliabilityPanel runId={run.id} support={support} />
       {support && <SupportOutputs state={run.state} />}
       <section className="mt-6 rounded-2xl border border-border p-6">

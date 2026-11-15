@@ -46,6 +46,7 @@ export const runQueueConfigSchema = z.object({
     .default('workflow-runs'),
 });
 export const workerConfigSchema = runQueueConfigSchema.extend({
+  CHAOS_ENABLED: z.enum(['true', 'false']).default('false'),
   MONGODB_URI: z.string().regex(/^mongodb(?:\+srv)?:\/\//),
   WORKER_LOCK_DURATION_MS: z.coerce.number().int().min(1000).default(15000),
   WORKER_STALLED_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),

@@ -21,6 +21,7 @@ import {
   type SupportDependencies,
 } from './support';
 export type SupportHooks = {
+  approvalFinished?: (runId: string) => Promise<void>;
   stepStarted: (runId: string, node: SupportNode) => Promise<void>;
   checkpoint: (runId: string, state: SupportState, id: string) => Promise<void>;
   runNode: (
@@ -104,7 +105,7 @@ export async function supportNodeOutput(
         completed,
       };
     case 'close_ticket':
-      await deps.tickets.close(state.ticketId, 'closed');
+      await deps.tickets.close(state.ticketId, 'closed', runId);
       return { ticketStatus: 'closed', completed };
   }
 }
@@ -161,6 +162,7 @@ export async function createSupportRuntime(
             refundCents: state.risk.refundCents,
           }),
         );
+        await hooks.approvalFinished?.(String(config.configurable?.thread_id));
         if (decision.action === 'reject')
           await deps.tickets.close(state.ticketId, 'rejected');
         return {

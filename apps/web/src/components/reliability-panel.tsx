@@ -69,6 +69,8 @@ export function ReliabilityPanel({
                 className="rounded-lg border border-emerald-500/30 p-4 text-sm"
               >
                 Fake refund: USD {(refund.amountCents / 100).toFixed(2)}
+                {' · '}
+                {refund.status}
                 <p className="mt-2 break-all font-mono text-xs">{refund.id}</p>
               </li>
             ))}
@@ -77,7 +79,8 @@ export function ReliabilityPanel({
                 key={email.id}
                 className="rounded-lg border border-sky-500/30 p-4 text-sm"
               >
-                Mailpit email: {email.status} · {email.payload.to}
+                Mailpit {email.purpose}: {email.status} · {email.payload.to}
+                {email.voided ? ' · voided by correction' : ''}
                 <p className="mt-2 break-all text-xs">{email.payload.text}</p>
                 <p className="mt-2 break-all font-mono text-xs">
                   {email.payload.messageId}

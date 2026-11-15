@@ -18,6 +18,7 @@ import {
 } from '@unkillable/storage';
 import { createExecutor } from './executor';
 import { MailpitMailer, supportDependencies } from './support-adapters';
+import { RedisFaultInjector } from './faults';
 const config = {
   ...infrastructureSchema.parse(process.env),
   ...workerConfigSchema.parse(process.env),
@@ -36,6 +37,7 @@ for (const [name, indexes] of Object.entries(supportIndexes))
 const repository = new RunRepository(mongo);
 const reliability = repository.reliability();
 const smtp = new MailpitMailer(config);
+const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 const executor = await createExecutor(
   repository,
   config.MONGODB_URI,
@@ -43,8 +45,9 @@ const executor = await createExecutor(
   config.DEMO_NODE_DELAY_MS,
   config.NODE_RETRY_POLICIES,
   supportDependencies(repository, config, (mail) => smtp.deliver(mail)),
+  new RedisFaultInjector(connection, config.CHAOS_ENABLED === 'true'),
+  (mail) => smtp.deliver(mail),
 );
-const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 connection.on('error', (err) =>
   logger.error({ err }, 'Worker Redis unavailable'),
 );
@@ -81,6 +84,25 @@ worker.on('stalled', (jobId) =>
 async function recordFailedJob(job: Job | undefined, error: unknown) {
   const id = job?.data?.runId;
   if (typeof id !== 'string') return;
+  const run = await repository.get(id);
+  if (
+    run?.workflowId === 'support-ticket-router' &&
+    run.execution === Number(job?.data.execution ?? 0)
+  ) {
+    if (
+      run.status === 'compensating' ||
+      (await repository
+        .saga()
+        .begin(
+          id,
+          run.execution,
+          error instanceof Error ? error.message : 'Queue execution failed',
+        ))
+    ) {
+      await executor.execute(id, run.execution);
+      return;
+    }
+  }
   await reliability.recordFailure(id, Number(job?.data.execution ?? 0), error, {
     jobId: job?.id ?? null,
     attempts: job?.attemptsMade ?? 1,
@@ -109,6 +131,15 @@ const maintenance = setInterval(() => {
   if (maintaining) return;
   maintaining = true;
   void (async () => {
+    for (const id of await repository.saga().pending())
+      await executor
+        .execute(id)
+        .catch((err) =>
+          logger.error(
+            { runId: id, err },
+            'Compensation pending; maintenance will retry',
+          ),
+        );
     await reliability.dispatchOutbox(25, (mail) => smtp.deliver(mail));
     const failedJobs = await queue.getFailed(failedOffset, failedOffset + 99);
     failedOffset = failedJobs.length === 100 ? failedOffset + 100 : 0;
@@ -127,7 +158,7 @@ const maintenance = setInterval(() => {
     .finally(() => {
       maintaining = false;
     });
-}, 1000).unref();
+}, 5000).unref();
 const heartbeat = setInterval(
   () =>
     logger.info(

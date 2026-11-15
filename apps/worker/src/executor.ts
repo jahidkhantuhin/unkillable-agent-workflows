@@ -13,13 +13,16 @@ import {
   RetryableError,
   PermanentError,
   NodeFailure,
+  type SupportMail,
 } from '@unkillable/shared';
+import { noFaults, type FaultInjector } from './faults';
 async function createDemoExecutor(
   repository: RunRepository,
   uri: string,
   dbName: string,
   delayMs: number,
   policies: Partial<Record<string, RetryPolicy>> = {},
+  faults: FaultInjector = noFaults,
 ) {
   const reliability = repository.reliability();
   const approvals = repository.approvals();
@@ -52,12 +55,28 @@ async function createDemoExecutor(
     uri,
     dbName,
     {
+      approvalFinished: (runId) =>
+        retryOperation(
+          'approval_after',
+          () => faults.at(runId, 'approval', 'after'),
+          reliability.attemptStore(
+            runId,
+            'approval_after',
+            active.get(runId) ?? 0,
+          ),
+        ),
       stepStarted: async (runId, stepName) => {
         await repository.append(
           runId,
           { type: 'STEP_STARTED', stepName },
           { expectedExecution: active.get(runId) },
         );
+        if (stepName === 'approval')
+          await retryOperation(
+            'approval',
+            () => faults.at(runId, 'approval', 'before'),
+            reliability.attemptStore(runId, 'approval', active.get(runId) ?? 0),
+          );
       },
       checkpoint: recordCheckpoint,
       runNode: async (runId, node, operation) => {
@@ -67,6 +86,7 @@ async function createDemoExecutor(
         return retryOperation(
           node,
           async (attempt) => {
+            await faults.at(runId, node, 'before');
             if (node === 'complete' && run.workflowVersion >= 2) {
               const mode = demoStateSchema.parse(run.state).deliveryMode;
               if (mode === 'permanent')
@@ -93,7 +113,9 @@ async function createDemoExecutor(
                 effectResultSchema,
               );
             }
-            return operation();
+            const result = await operation();
+            await faults.at(runId, node, 'after');
+            return result;
           },
           reliability.attemptStore(runId, node, execution),
           policies[node] ?? defaultRetryPolicy,
@@ -210,6 +232,8 @@ export async function createExecutor(
   delayMs: number,
   policies: Partial<Record<string, RetryPolicy>> = {},
   support?: SupportDependencies,
+  faults: FaultInjector = noFaults,
+  deliver?: (mail: SupportMail) => Promise<void>,
 ) {
   const demo = await createDemoExecutor(
     repository,
@@ -217,6 +241,7 @@ export async function createExecutor(
     dbName,
     delayMs,
     policies,
+    faults,
   );
   let ticketRuntime:
     | Promise<
@@ -228,34 +253,55 @@ export async function createExecutor(
       >
     | undefined;
   let closeMailer: (() => void) | undefined;
+  const inFlight = new Map<string, Promise<void>>();
+  async function execute(id: string, execution?: number) {
+    const run = await repository.get(id);
+    if (run?.workflowId !== 'support-ticket-router')
+      return demo.execute(id, execution);
+    if (!ticketRuntime)
+      ticketRuntime = (async () => {
+        const { createSupportExecutor } = await import('./support-executor');
+        let deps = support;
+        if (!deps) {
+          const { supportConfigSchema } = await import('@unkillable/shared');
+          const { supportDependencies, MailpitMailer } =
+            await import('./support-adapters');
+          const config = supportConfigSchema.parse({});
+          const smtp = new MailpitMailer(config);
+          closeMailer = () => smtp.close();
+          deliver = (mail) => smtp.deliver(mail);
+          deps = supportDependencies(repository, config, (mail) =>
+            smtp.deliver(mail),
+          );
+        }
+        return createSupportExecutor(
+          repository,
+          uri,
+          dbName,
+          deps,
+          policies,
+          faults,
+          deliver,
+        );
+      })().catch((error) => {
+        ticketRuntime = undefined;
+        closeMailer?.();
+        closeMailer = undefined;
+        throw error;
+      });
+    return (await ticketRuntime).execute(id, execution);
+  }
   return {
     async execute(id: string, execution?: number) {
-      const run = await repository.get(id);
-      if (run?.workflowId !== 'support-ticket-router')
-        return demo.execute(id, execution);
-      if (!ticketRuntime)
-        ticketRuntime = (async () => {
-          const { createSupportExecutor } = await import('./support-executor');
-          let deps = support;
-          if (!deps) {
-            const { supportConfigSchema } = await import('@unkillable/shared');
-            const { supportDependencies, MailpitMailer } =
-              await import('./support-adapters');
-            const config = supportConfigSchema.parse({});
-            const smtp = new MailpitMailer(config);
-            closeMailer = () => smtp.close();
-            deps = supportDependencies(repository, config, (mail) =>
-              smtp.deliver(mail),
-            );
-          }
-          return createSupportExecutor(repository, uri, dbName, deps, policies);
-        })().catch((error) => {
-          ticketRuntime = undefined;
-          closeMailer?.();
-          closeMailer = undefined;
-          throw error;
-        });
-      return (await ticketRuntime).execute(id, execution);
+      const generation = execution ?? (await repository.get(id))?.execution;
+      const key = `${id}:${generation}`;
+      const current = inFlight.get(key);
+      if (current) return current;
+      const pending = execute(id, execution).finally(() =>
+        inFlight.delete(key),
+      );
+      inFlight.set(key, pending);
+      return pending;
     },
     async close() {
       await demo.close();

@@ -155,7 +155,20 @@ describe.skipIf(!uri || !redis || !mailpit)(
       cookie = (signed.headers['set-cookie'] as unknown as string[])
         .map((value) => value.split(';')[0])
         .join('; ');
-      executor = await createExecutor(runs, uri!, db.databaseName, 0, {}, deps);
+      executor = await createExecutor(
+        runs,
+        uri!,
+        db.databaseName,
+        0,
+        {},
+        deps,
+        undefined,
+        (mail) => {
+          if (rejectSmtp)
+            throw new PermanentError('Simulated permanent SMTP rejection');
+          return smtp.deliver(mail);
+        },
+      );
       worker = new Worker(
         name,
         (job) => executor.execute(job.data.runId, job.data.execution),
@@ -332,6 +345,7 @@ describe.skipIf(!uri || !redis || !mailpit)(
       const body = input();
       const run = await runs.createSupport(userId, body);
       const ticketId = String(run.state.ticketId);
+      await runs.append(run.id, { type: 'RUN_STARTED' }, { status: 'running' });
       await runs.support().queueEmail(run.id, ticketId, {
         to: body.customerEmail,
         subject: 'Concurrent local reply',
@@ -354,14 +368,14 @@ describe.skipIf(!uri || !redis || !mailpit)(
       expect(records.emails).toHaveLength(1);
       expect(records.deliveries).toHaveLength(1);
     }, 30000);
-    it('recovers a failed email from Dead Letters without repeating its committed refund', async () => {
+    it('keeps failed compensation resumable and reverses a refund after permanent email failure', async () => {
       await members.setRole(userId, 'admin');
       const run = await create();
       rejectSmtp = true;
       expect((await decide(run.id, { action: 'approve' })).status).toBe(200);
       await until(
         () => runs.get(run.id),
-        (value) => value?.status === 'failed',
+        (value) => value?.status === 'compensating',
       );
       const failed = await runs.reliability().details(run.id);
       expect(failed.refunds).toHaveLength(1);
@@ -373,25 +387,17 @@ describe.skipIf(!uri || !redis || !mailpit)(
       expect((await captured(run.input.customerEmail)).messages).toHaveLength(
         0,
       );
-      const letter = (await runs.reliability().deadLetters()).find(
-        (row) => row.runId === run.id,
-      )!;
-      expect(
-        (
-          await request(app)
-            .post(`/dead-letters/${letter.id}/retry`)
-            .set('Cookie', cookie)
-            .set('Origin', origin)
-            .send({ version: letter.version })
-        ).status,
-      ).toBe(200);
+      await executor.execute(run.id);
       await until(
         () => runs.get(run.id),
-        (value) => value?.status === 'succeeded',
+        (value) => value?.status === 'compensated',
       );
       const recovered = await runs.reliability().details(run.id);
       expect(recovered.refunds).toHaveLength(1);
-      expect(recovered.emails).toHaveLength(1);
+      expect(recovered.refunds[0]?.status).toBe('reversed');
+      expect(
+        recovered.emails.filter((row) => row.purpose === 'correction'),
+      ).toHaveLength(1);
       expect((await captured(run.input.customerEmail)).messages).toHaveLength(
         1,
       );

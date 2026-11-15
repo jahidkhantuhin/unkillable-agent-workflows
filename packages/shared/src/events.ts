@@ -60,6 +60,7 @@ export const runEventSchema = z.discriminatedUnion('type', [
       'retry.scheduled',
       'compensation.started',
       'compensation.finished',
+      'compensation.failed',
     ]),
     value: z.record(z.string(), z.unknown()),
   }),

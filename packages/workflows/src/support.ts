@@ -35,7 +35,11 @@ export interface Mailer {
   ): Promise<{ id: string; messageId: string }>;
 }
 export interface TicketStore {
-  close(ticketId: string, status: 'closed' | 'rejected'): Promise<void>;
+  close(
+    ticketId: string,
+    status: 'closed' | 'rejected',
+    runId?: string,
+  ): Promise<void>;
 }
 export type SupportDependencies = {
   llm: LLM;

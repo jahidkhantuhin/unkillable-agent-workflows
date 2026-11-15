@@ -50,7 +50,7 @@ The email guarantee depends on this configured Mailpit receiver and retained Mes
 
 Support task nodes use the existing persisted retry budget, capped exponential backoff and jitter. Override keys now include classify, retrieve_policy, draft_reply, risk_check, issue_refund, send_email and close_ticket; approval remains native control flow, never a retry-wrapped exception. Explicit transient failures, network/model timeouts, HTTP 429 and 5xx retry. Invalid structured outputs/citations, explicit permanent errors and permanent SMTP rejection stop and enter Dead Letters.
 
-On a failed support run, a still-pending email intent is marked failed in the same transaction as the dead letter. Background dispatch does not continue that failed intent. Admin Retry resumes the checkpoint with a new node budget and the same effect keys/Message-ID. A failed email can therefore recover without repeating the already committed refund. Discard retains history and does not reverse a refund or remove a captured message. Compensation is Step 7 and has not been implemented.
+Step 7 extends this behavior: a terminal support-node failure after any effect now starts reverse-order compensation, stops pending forward delivery, voids the original reply through a correction and reverses the fake refund. Such runs finish compensated instead of offering forward retry through Dead Letters. Failure before any effect still uses Dead Letters. See [STEP-7.md](STEP-7.md) for current recovery and fault-testing instructions; the Step 6 verification record describes behavior at that earlier milestone.
 
 ## Configuration and injected adapters
 
@@ -100,4 +100,4 @@ Tests cover mock classification/citations, invalid model output, risk limits, ap
 
 Versions checked: AI SDK 7.0.173, @ai-sdk/google 4.0.121, @ai-sdk/openai-compatible 3.0.92, Nodemailer 10.5.0, Zod 4.6.7. LangGraph.js 1.7.4, MongoDBSaver 1.5.1 and existing MongoDB driver versions are retained. References: [AI SDK structured output](https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data), [OpenAI-compatible providers](https://ai-sdk.dev/providers/openai-compatible-providers), [Nodemailer message configuration](https://nodemailer.com/message), [Mailpit deduplication options](https://mailpit.axllent.org/docs/configuration/runtime-options/), [Mailpit search/API](https://mailpit.axllent.org/docs/api-v1/).
 
-Step 7 has not started.
+Step 7 adds compensation and fault hooks; see [STEP-7.md](STEP-7.md).

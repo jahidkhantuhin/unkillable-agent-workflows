@@ -10,14 +10,21 @@ import {
   type SupportNode,
   type SupportState,
   type RetryPolicy,
+  type SupportMail,
 } from '@unkillable/shared';
 import type { RunRepository } from '@unkillable/storage';
+import { noFaults, type FaultInjector } from './faults';
+import { compensate } from './compensator';
 export async function createSupportExecutor(
   repository: RunRepository,
   uri: string,
   dbName: string,
   deps: SupportDependencies,
   policies: Partial<Record<string, RetryPolicy>> = {},
+  faults: FaultInjector = noFaults,
+  deliver: (mail: SupportMail) => Promise<void> = async () => {
+    throw new Error('Compensation mail transport missing');
+  },
 ) {
   const reliability = repository.reliability();
   const approvals = repository.approvals();
@@ -30,18 +37,34 @@ export async function createSupportExecutor(
         {
           key: `step:${stepName}:finished`,
           expectedExecution: active.get(runId),
+          expectedStatus: 'running',
         },
       );
     await repository.append(
       runId,
       { type: 'STATE_SNAPSHOT', snapshot: state },
-      { key: `checkpoint:${id}`, state, expectedExecution: active.get(runId) },
+      {
+        key: `checkpoint:${id}`,
+        state,
+        expectedExecution: active.get(runId),
+        expectedStatus: 'running',
+      },
     );
   }
   const runtime = await createSupportRuntime(
     uri,
     dbName,
     {
+      approvalFinished: (runId) =>
+        retryOperation(
+          'approval_after',
+          () => faults.at(runId, 'approval', 'after'),
+          reliability.attemptStore(
+            runId,
+            'approval_after',
+            active.get(runId) ?? 0,
+          ),
+        ),
       checkpoint,
       stepStarted: async (runId, stepName) => {
         await repository.append(
@@ -49,11 +72,22 @@ export async function createSupportExecutor(
           { type: 'STEP_STARTED', stepName },
           { expectedExecution: active.get(runId) },
         );
+        if (stepName === 'approval')
+          await retryOperation(
+            'approval',
+            () => faults.at(runId, 'approval', 'before'),
+            reliability.attemptStore(runId, 'approval', active.get(runId) ?? 0),
+          );
       },
       runNode: (runId, node, operation) =>
         retryOperation(
           node,
-          () => operation(),
+          async () => {
+            await faults.at(runId, node, 'before');
+            const result = await operation();
+            await faults.at(runId, node, 'after');
+            return result;
+          },
           reliability.attemptStore(runId, node, active.get(runId) ?? 0),
           policies[node] ?? defaultRetryPolicy,
         ),
@@ -65,6 +99,8 @@ export async function createSupportExecutor(
     async execute(id: string, expectedExecution?: number) {
       const run = await repository.get(id);
       if (!run) throw new Error('Run not found');
+      if (run.status === 'compensating')
+        return compensate(repository, id, deliver, faults);
       if (
         terminalStatuses.includes(run.status) ||
         run.status === 'waiting_approval' ||
@@ -151,6 +187,7 @@ export async function createSupportExecutor(
           {
             key: `run:finished:${run.execution}`,
             status: outcome,
+            expectedStatus: 'running',
             state: result,
             expectedExecution: run.execution,
           },
@@ -158,6 +195,14 @@ export async function createSupportExecutor(
       } catch (error) {
         const failure = await reliability.latestFailure(id, run.execution);
         if (failure?.error) {
+          if (
+            await repository
+              .saga()
+              .begin(id, run.execution, failure.error.message)
+          ) {
+            await compensate(repository, id, deliver, faults);
+            return;
+          }
           const saved = await runtime.saver.getTuple(config);
           await reliability.recordFailure(id, run.execution, error, {
             checkpointId: saved?.checkpoint.id ?? null,

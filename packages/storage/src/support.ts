@@ -15,9 +15,11 @@ import {
   supportExamples,
   ticketInputSchema,
   PermanentError,
+  effectResultSchema,
   type SupportMail,
 } from '@unkillable/shared';
 import { ReliabilityRepository } from './reliability';
+import { RunRepository } from './index';
 type Stored = Document & { _id: string };
 export class SupportRepository {
   private readonly reliability;
@@ -70,6 +72,7 @@ export class SupportRepository {
         await this.db
           .collection<Stored>('fakeRefunds')
           .insertOne({ ...record, _id: record.id }, { session });
+        await this.effect(runId, 'issue_refund', session);
         return {
           id: record.id,
           amountCents: record.amountCents,
@@ -83,8 +86,9 @@ export class SupportRepository {
     runId: string,
     ticketId: string,
     input: Omit<SupportMail, 'messageId'>,
+    node = 'send_email',
   ) {
-    const key = `${runId}:send_email:reply`;
+    const key = `${runId}:${node}:reply`;
     const messageId = `<${createHash('sha256').update(key).digest('hex')}@unkillable.test>`;
     return this.reliability.executeOnce(
       key,
@@ -97,6 +101,7 @@ export class SupportRepository {
           ticketId,
           payload: supportMailSchema.parse({ ...input, messageId }),
           status: 'queued',
+          purpose: node === 'send_email' ? 'reply' : 'correction',
           createdAt: now,
           updatedAt: now,
         });
@@ -104,12 +109,53 @@ export class SupportRepository {
           .collection<Stored>('fakeEmails')
           .insertOne({ ...record, _id: record.id }, { session });
         await enqueue('email', record.payload);
+        if (node === 'send_correction_or_void')
+          await this.db
+            .collection('fakeEmails')
+            .updateOne(
+              { key: `${runId}:send_email:reply` },
+              { $set: { voided: true, updatedAt: now } },
+              { session },
+            );
+        if (node === 'send_email') await this.effect(runId, node, session);
         return { id: record.id, messageId };
       },
       mailResultSchema,
     );
   }
-  async close(ticketId: string, status: 'closed' | 'rejected') {
+  private async effect(runId: string, node: string, session: ClientSession) {
+    const runs = new RunRepository(this.client, this.db);
+    const run = await runs.getInSession(runId, session);
+    if (!run || run.status !== 'running')
+      throw new PermanentError('Forward effects require a running workflow');
+    await runs.appendInSession(
+      runId,
+      { type: 'CUSTOM', name: 'effect.completed', value: { nodeId: node } },
+      { key: `effect:${node}` },
+      session,
+    );
+  }
+  async close(ticketId: string, status: 'closed' | 'rejected', runId?: string) {
+    if (status === 'closed' && runId) {
+      await this.reliability.executeOnce(
+        `${runId}:close_ticket:close`,
+        async ({ session }) => {
+          const result = await this.db
+            .collection('tickets')
+            .updateOne(
+              { id: ticketId },
+              { $set: { status, updatedAt: new Date() } },
+              { session },
+            );
+          if (result.matchedCount !== 1)
+            throw new PermanentError('Ticket to close was not found');
+          await this.effect(runId, 'close_ticket', session);
+          return { receipt: ticketId };
+        },
+        effectResultSchema,
+      );
+      return;
+    }
     const result = await this.db
       .collection('tickets')
       .updateOne({ id: ticketId }, { $set: { status, updatedAt: new Date() } });

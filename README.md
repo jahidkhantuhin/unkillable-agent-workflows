@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–6 provide durable execution, human approval, and a support ticket router with validated classification, cited policy replies, fake refunds, and local Mailpit email capture. MockLLM is the default; Gemini and local Ollama are opt-in adapters. Runs survive worker restarts and expose live timelines and effect receipts. Compensation and chaos controls remain later steps; no chaos-report numbers are claimed.
+Steps 1–7 provide durable execution, human approval, a support ticket router, reverse-order compensation, and optional Redis-controlled fault hooks. Runs survive worker restarts and expose live timelines and effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The Chaos UI and measured chaos report remain later steps; no chaos-report numbers are claimed.
 
 ## Quickstart
 
@@ -119,9 +119,17 @@ Open **Runs → New ticket** as an admin or approver. Load the duplicate-charge 
 
 `pnpm seed` upserts three synthetic ticket examples. New collections tickets, ticketExamples, fakeRefunds and fakeEmails retain verifiable state/effects. Inputs accept only .test recipients and local Mailpit SMTP; the worker never contacts a bank or real customer mailbox. MockLLM/local policies need no model key. Optional SUPPORT_LLM_PROVIDER=gemini or ollama enables configured adapters; tests always use mocks. Support node outputs, citations, proposed refund, approved reply and effect receipts appear on run detail and in the Approval Inbox.
 
-Compose enables persistent Mailpit storage and duplicate Message-ID suppression. Replays use a stable ID; this receiver setting closes the SMTP acceptance/acknowledgement gap. Keep deduplication and retained messages intact; this is a local Mailpit guarantee, not a generic exactly-once SMTP claim. Refund compensation is Step 7 and is not implemented yet.
+Compose enables persistent Mailpit storage and duplicate Message-ID suppression. Replays use a stable ID; this receiver setting closes the SMTP acceptance/acknowledgement gap. Keep deduplication and retained messages intact; this is a local Mailpit guarantee, not a generic exactly-once SMTP claim. Step 7 now compensates committed support effects after terminal node failure, as described below.
 
 See [docs/STEP-6.md](docs/STEP-6.md) for all example outcomes, new environment variables, adapter contracts, safety boundaries, retry/DLQ behavior and tests. Apply the updated Compose configuration with `docker compose up -d` before testing email capture. Stop dev and run `pnpm check` plus `pnpm test:integration` for verification.
+
+## Compensation and fault hooks (Step 7)
+
+A terminal support-node failure after effects changes the run to compensating. The worker reads committed receipts, then reopens a closed ticket, sends one correction that voids the previous reply, and reverses the fake refund, in that reverse order where applicable. Completed compensations use stable executeOnce keys; an interrupted rollback resumes its saved plan rather than continuing the original graph. The final state is compensated, with the original failure retained. A failed compensation remains visible and is retried by worker maintenance every five seconds, including after restart. If no effects were committed, the existing failed/Dead Letters path applies.
+
+No captured email can be recalled: the correction is a separate Mailpit message, with its own stable Message-ID. Refund cards show active/reversed; email cards distinguish reply/correction and mark the original voided. The timeline shows compensation actions and failures. Historical forward receipts/checkpoints remain evidence of what happened; they are not deleted or rewritten as if the effects never occurred.
+
+CHAOS_ENABLED=false is the default. When explicitly enabled on the worker, per-run/node Redis flags support throw_once, throw_always, delay_ms and crash_process before/after work, including compensation. There is no chaos API/UI or process supervisor yet. See [docs/STEP-7.md](docs/STEP-7.md) for exact local commands, recovery behavior, safeguards and verification. Keep the flag disabled during normal use.
 
 ## Human approval gates (Step 5)
 

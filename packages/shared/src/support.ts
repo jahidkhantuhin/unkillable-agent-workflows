@@ -108,6 +108,7 @@ export const supportStateSchema = z.object({
 });
 export type SupportState = z.infer<typeof supportStateSchema>;
 export const fakeRefundSchema = z.object({
+  status: z.enum(['active', 'reversed']).default('active'),
   id: z.string(),
   key: z.string(),
   runId: z.string(),
@@ -117,6 +118,8 @@ export const fakeRefundSchema = z.object({
   createdAt: z.date(),
 });
 export const fakeEmailSchema = z.object({
+  voided: z.boolean().default(false),
+  purpose: z.enum(['reply', 'correction']).default('reply'),
   id: z.string(),
   key: z.string(),
   runId: z.string(),

@@ -16,6 +16,12 @@ export function SupportOutputs({ state }: { state: Record<string, unknown> }) {
   return (
     <section className="mt-6 rounded-2xl border border-border p-6">
       <h2 className="font-medium">Support node outputs</h2>
+      {Boolean(state.saga) && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Forward outputs retain the saved history. Check effect receipts above
+          for current refund and email status after compensation.
+        </p>
+      )}
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {Object.entries(outputs).map(([label, output]) => (
           <div key={label} className="min-w-0 rounded-lg bg-muted p-4">

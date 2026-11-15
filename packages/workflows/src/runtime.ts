@@ -17,6 +17,7 @@ import {
   approvalDecisionSchema,
 } from '@unkillable/shared';
 type Hooks = {
+  approvalFinished?: (runId: string) => Promise<void>;
   runNode?: (
     runId: string,
     node: DemoNode,
@@ -132,6 +133,7 @@ export function buildDemoGraph(
         const decision = approvalDecisionSchema.parse(
           interrupt({ message: state.message }),
         );
+        await hooks.approvalFinished?.(String(config.configurable?.thread_id));
         return {
           approvalAction: decision.action,
           noticeMessage:

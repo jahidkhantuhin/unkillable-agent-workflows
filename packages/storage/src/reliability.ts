@@ -162,7 +162,7 @@ export class ReliabilityRepository {
         try {
           return await session.withTransaction(async () => {
             const run = await this.runs.getInSession(runId, session);
-            if (!run || run.execution !== execution)
+            if (!run || run.execution !== execution || run.status !== 'running')
               throw new StaleExecutionError();
             const current = await load(session);
             const now = this.now();
@@ -293,6 +293,7 @@ export class ReliabilityRepository {
           !run ||
           run.execution !== execution ||
           run.status === 'waiting_approval' ||
+          run.status === 'compensating' ||
           [
             'succeeded',
             'failed',
@@ -463,6 +464,12 @@ export class ReliabilityRepository {
     if (!doc) throw new PermanentError('Email intent not found');
     const record = outboxSchema.parse(doc);
     if (record.status === 'sent') return;
+    const run = await this.runs.get(record.runId);
+    if (
+      key === `${record.runId}:send_email:reply` &&
+      ['compensating', 'compensated'].includes(run?.status ?? '')
+    )
+      throw new PermanentError('Forward email is blocked during compensation');
     if (record.kind !== 'email')
       throw new PermanentError('Not an email intent');
     if (record.status === 'failed')
@@ -542,6 +549,12 @@ export class ReliabilityRepository {
     for (const doc of records) {
       const record = outboxSchema.parse(doc);
       if (record.kind === 'email') {
+        // Support SMTP belongs to the node/compensator, so maintenance cannot race rollback.
+        if (
+          record.key.includes(':send_email:') ||
+          record.key.includes(':send_correction_or_void:')
+        )
+          continue;
         if (deliverEmail)
           await this.deliverEmail(record.key, deliverEmail).catch(() => {});
         continue;

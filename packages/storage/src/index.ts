@@ -25,6 +25,7 @@ import {
 import { ReliabilityRepository } from './reliability';
 import { ApprovalRepository } from './approvals';
 import { SupportRepository } from './support';
+import { SagaRepository } from './saga';
 type Stored = Document & { _id: string };
 export interface RunStore {
   create(userId: string, input: DemoInput): Promise<Run>;
@@ -33,6 +34,9 @@ export interface RunStore {
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  saga() {
+    return new SagaRepository(this.client, this.db);
+  }
   support() {
     return new SupportRepository(this.client, this.db);
   }
@@ -201,6 +205,11 @@ export class RunRepository implements RunStore {
     const run = await this.getInSession(id, session);
     if (!run) throw new Error('Run not found');
     if (
+      options.expectedStatus !== undefined &&
+      run.status !== options.expectedStatus
+    )
+      throw new StaleExecutionError();
+    if (
       options.expectedExecution !== undefined &&
       run.execution !== options.expectedExecution
     )
@@ -246,6 +255,7 @@ export class RunRepository implements RunStore {
   }
 }
 export type RunUpdate = {
+  expectedStatus?: RunStatus;
   key?: string;
   status?: RunStatus;
   state?: Record<string, unknown>;
@@ -258,3 +268,4 @@ export type RunUpdate = {
 export * from './reliability';
 export * from './approvals';
 export * from './support';
+export * from './saga';
