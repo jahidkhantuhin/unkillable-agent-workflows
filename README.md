@@ -144,6 +144,8 @@ See [docs/STEP-6.md](docs/STEP-6.md) for all example outcomes, new environment v
 
 Every run timeline loads its versioned workflow definition into React Flow. Nodes show pending, running, succeeded, failed, pulsing waiting approval, retrying and compensation states. Edges animate toward active work; orange dashed edges show reverse compensation. Select a node to inspect recorded input/output, attempts and wall-clock elapsed duration. The grouped node timeline includes retry markers and reviewer identity/decision, while the raw ordered event log remains available below.
 
+Timeline numbers identify events across the entire run. Node groups filter that history, so gaps such as #5 → #7 are intentional: #6 may be a saved-state snapshot shown in the full Event history. They are not per-node row numbers or evidence of missing events. See [the numbering example](docs/STEP-8.md#why-event-numbers-skip-in-the-node-timeline).
+
 Fresh pages replay saved events from sequence zero. Reconnects resume after the last accepted event, deduplicate replay and recover gaps; final run state is refreshed when the stream completes. New runs persist node input/output with their start/checkpoint events. Older events remain valid, and missing historical payloads/timing are labelled unavailable instead of invented. Elapsed duration includes retries, downtime and human review.
 
 See [docs/STEP-8.md](docs/STEP-8.md) for a short walkthrough, graph semantics and verification. `pnpm check` and `pnpm test:integration` cover the code/API; after a build, `pnpm exec playwright install chromium` then `pnpm test:e2e` runs the isolated approval-pulse/reload smoke test. The intended release milestone is v0.5; no Git tag is created automatically because the user manages commits and tags.

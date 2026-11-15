@@ -21,6 +21,12 @@ For retry/failure/compensation visuals, repeat the documented Step 7 Redis fault
 
 ## What is recorded and rebuilt
 
+### Why event numbers skip in the node timeline
+
+Numbers such as #3 and #7 are event sequence numbers for the entire run, not row numbers that restart within each node. The grouped Node timeline shows only events associated with that node. Saved-state snapshots and other run-level events appear in the full Event history, so gaps in a node group are intentional and do not mean events were lost.
+
+For example, Classify might show #3 step started, #4 node.attempt and #5 step finished. Event #6 can be a saved-state snapshot, followed by Retrieve Policy at #7–#9 and another snapshot at #10. These numbers are illustrative; actual numbers depend on the run, retries and other events. Open Event history to inspect the complete ordered sequence. The same sequence numbers are used for replay/reconnect; the UI does not renumber filtered entries.
+
 - STEP_STARTED now optionally carries the node's input state. STEP_FINISHED carries its durable checkpoint output state. No input/output is logged before the corresponding existing event boundary. Existing events without those optional fields remain valid.
 - Node state comes from ordered, sequence-deduplicated events plus the current run/checkpoint status. A fresh page replays from zero even if the server already supplied a newer run DTO, so old attempt/reviewer history is available without regressing the canonical run status.
 - EventSource reconnects explicitly with ?after=lastAcceptedSequence. Repeated events are ignored. A sequence gap closes the stream and replays from the last accepted cursor rather than skipping missing work. The existing API also supports Last-Event-ID. Unmount closes the stream and cancels reconnect timers.
