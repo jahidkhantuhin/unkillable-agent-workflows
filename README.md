@@ -214,11 +214,11 @@ The worker allows up to twenty seconds for graceful shutdown; the API retains it
 
 ## Development checks
 
-Before each push, Husky runs `pnpm check`: lint/formatting → typecheck → tests → production build. The first failed check stops the sequence and blocks the push. You can run `pnpm check` manually without pushing. The pre-commit hook still runs lint-staged.
+Before each push, Husky runs `pnpm check && pnpm test:integration`: lint/formatting → typecheck → service-free tests → production build → integration tests. This includes the SMTP-compensation recovery regression. The first failed command stops the sequence and blocks the push. You can run these commands manually without pushing. The pre-commit hook still runs lint-staged.
 
 After pulling these changes, run `pnpm prepare` once to activate the Git hooks (normal `pnpm install` also runs prepare). Hook setup is skipped if `HUSKY=0` or `CI` is set. Hook files use LF endings on Windows too. Local hooks can be bypassed, so CI remains the remote check.
 
-The pre-push checks do not start Docker or require MongoDB. Run `pnpm test:integration` separately with local MongoDB and Redis running; CI also runs those database checks.
+Pre-push checks require your configured .env and local MongoDB, Redis and Mailpit. Start them with `docker compose up -d` and stop managed development with `pnpm dev:stop` before pushing, so production builds do not share Next's output with a running dev server. The hook does not start Docker automatically. Missing MONGODB_URI/REDIS_URL fails explicitly rather than silently skipping required suites. GitHub CI already runs the same integration test files, including the compensation regression.
 
 If `pnpm dev` reports missing `tsx` or Next.js CLI files, stop the dev processes, restore the installed packages and links with `pnpm install --frozen-lockfile --force`, then retry `pnpm dev`. A normal install can report everything up to date even when local package links are damaged. This repair keeps the dependency versions in the lockfile. If React declarations still fail to resolve, the generated hoisted links in `node_modules/.pnpm/node_modules` may also need rebuilding; remove only that generated directory and repeat the forced install.
 

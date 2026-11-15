@@ -1,6 +1,10 @@
 import { spawnSync } from 'node:child_process';
 if (!process.env.MONGODB_URI)
   throw new Error('Set MONGODB_URI in .env before integration tests');
+if (!process.env.REDIS_URL)
+  throw new Error(
+    'Set REDIS_URL in .env before integration tests; Redis-dependent suites must not be skipped',
+  );
 const result = spawnSync(
   process.execPath,
   [
