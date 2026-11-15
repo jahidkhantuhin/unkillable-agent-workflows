@@ -43,6 +43,7 @@ describe.skipIf(!uri || !redisUrl)(
     const children: ChildProcess[] = [],
       flags: string[] = [];
     const members = new MongoMembershipRepository(db);
+    let workerSupervisor: ChildProcess;
     let queue: Queue,
       service: RunService,
       chaos: ChaosService,
@@ -276,8 +277,17 @@ describe.skipIf(!uri || !redisUrl)(
       expect((await post('llm', { mode: 'off' })).status).toBe(200);
     });
     it('kills a worker through the API during an active node and automatically resumes its abandoned job', async () => {
-      await supervisor('worker');
+      workerSupervisor = await supervisor('worker');
       const before = (await chaos.status()).worker.instance;
+      const lease = `${chaosPrefix(name)}:lease:worker`;
+      const owner = await redis.get(lease);
+      expect(owner).toBeTruthy();
+      await redis.del(lease);
+      await until(
+        () => redis.get(lease),
+        (value) => value === owner,
+      );
+      expect((await chaos.status()).worker.instance).toBe(before);
       const run = await service.create(userId, {
         message: 'Survive chaos API worker kill',
       });
@@ -325,5 +335,15 @@ describe.skipIf(!uri || !redisUrl)(
       );
       expect(status.api.restarts).toBeGreaterThan(0);
     }, 45000);
+    it('never overwrites a lease held by another supervisor owner', async () => {
+      const lease = `${chaosPrefix(name)}:lease:worker`,
+        foreign = `foreign-${randomUUID()}`;
+      await redis.set(lease, foreign, 'EX', 10);
+      await until(
+        async () => workerSupervisor.exitCode,
+        (code) => code !== null,
+      );
+      expect(await redis.get(lease)).toBe(foreign);
+    }, 15000);
   },
 );

@@ -99,8 +99,22 @@ export async function createSupportExecutor(
     async execute(id: string, expectedExecution?: number) {
       const run = await repository.get(id);
       if (!run) throw new Error('Run not found');
-      if (run.status === 'compensating')
+      if (run.status === 'compensating') {
+        await repository.append(
+          id,
+          {
+            type: 'CUSTOM',
+            name: 'compensation.resumed',
+            value: {
+              instance: process.env.CHAOS_INSTANCE_ID ?? String(process.pid),
+            },
+          },
+          {
+            key: `saga:resumed:${process.env.CHAOS_INSTANCE_ID ?? process.pid}`,
+          },
+        );
         return compensate(repository, id, deliver, faults);
+      }
       if (
         terminalStatuses.includes(run.status) ||
         run.status === 'waiting_approval' ||

@@ -24,6 +24,19 @@ jobs:
           INTEGRATION_MAILPIT_URL: http://127.0.0.1:8025
           SUPPORT_LLM_PROVIDER: mock
       - run: pnpm build
+      - name: Seeded chaos invariants (50 support runs)
+        run: pnpm chaos --runs 50 --seed 20261116 --report-dir docs/chaos-ci
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017/unkillable_ci?replicaSet=rs0&directConnection=true
+          REDIS_URL: redis://127.0.0.1:6379
+          MAILPIT_API_URL: http://127.0.0.1:8025
+      - name: Preserve measured chaos report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: chaos-ci-report
+          path: docs/chaos-ci/CHAOS-REPORT.*
+          if-no-files-found: warn
       - run: pnpm exec playwright install --with-deps chromium
       - name: Live graph approval smoke
         run: pnpm test:e2e

@@ -261,6 +261,27 @@ importers:
         specifier: latest
         version: 7.3.2(supports-color@7.2.0)
 
+  apps/chaos:
+    dependencies:
+      '@unkillable/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@unkillable/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      bullmq:
+        specifier: 6.7.6
+        version: 6.7.6(ioredis@6.0.0(supports-color@7.2.0))
+      ioredis:
+        specifier: 6.0.0
+        version: 6.0.0(supports-color@7.2.0)
+      mongodb:
+        specifier: 7.9.0
+        version: 7.9.0
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+
   apps/web:
     dependencies:
       '@radix-ui/react-slot':
@@ -280,7 +301,7 @@ importers:
         version: 2.1.1
       lucide-react:
         specifier: latest
-        version: 1.72.0(@types/react@19.3.0)(react@19.3.1)
+        version: 1.73.0(@types/react@19.3.0)(react@19.3.1)
       next:
         specifier: 16.4.6
         version: 16.4.6(@playwright/test@1.65.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -2218,8 +2239,8 @@ packages:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
 
-  lucide-react@1.72.0:
-    resolution: {integrity: sha512-fbF5i1GU8GODETa3Q7rXqrJrcx3iPYrQtxthom103zGx+Z0BGwKYAW9s+9435ohYJ7hQm0av0PoZcqI1CRwNrg==}
+  lucide-react@1.73.0:
+    resolution: {integrity: sha512-fVOzGviL9mTfHenG1PbCfIceavyGlnpYNSYr+aGZHLRymAJ7DTP6KHuqt0uBkCKAoenr1UVkwSbDIYt2xIesEQ==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -4506,7 +4527,7 @@ snapshots:
     dependencies:
       p-locate: 5.0.0
 
-  lucide-react@1.72.0(@types/react@19.3.0)(react@19.3.1):
+  lucide-react@1.73.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:

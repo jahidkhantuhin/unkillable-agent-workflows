@@ -38,6 +38,12 @@ export class RedisFaultInjector implements FaultInjector {
       new Promise<void>((resolve) => setTimeout(resolve, ms)),
     private readonly queue = 'workflow-runs',
     private readonly random = Math.random,
+    private readonly triggered: (value: {
+      runId: string;
+      nodeId: string;
+      phase: FaultPhase;
+      mode: string;
+    }) => Promise<void> = async () => {},
   ) {}
   async at(runId: string, node: string, phase: FaultPhase) {
     if (!this.enabled) return;
@@ -72,6 +78,7 @@ export class RedisFaultInjector implements FaultInjector {
       );
       if (!won) return;
     }
+    await this.triggered({ runId, nodeId: node, phase, mode: flag.mode });
     if (flag.mode === 'throw_once')
       throw new RetryableError('Injected one-shot failure', 'CHAOS_THROW_ONCE');
     if (flag.mode === 'throw_always')

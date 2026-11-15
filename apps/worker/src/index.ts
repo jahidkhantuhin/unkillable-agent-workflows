@@ -53,6 +53,14 @@ const executor = await createExecutor(
     undefined,
     undefined,
     config.RUN_QUEUE_NAME,
+    Math.random,
+    async (value) => {
+      await repository.append(value.runId, {
+        type: 'CUSTOM',
+        name: 'chaos.triggered',
+        value,
+      });
+    },
   ),
   (mail) => smtp.deliver(mail),
 );

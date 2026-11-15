@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–9 provide durable execution, human approval, a support ticket router, reverse-order compensation, a live React Flow graph, and an admin-only development Chaos panel with supervised API/worker restart. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The measured chaos report remains Step 10; no chaos-report numbers are claimed.
+Steps 1–10 provide durable execution, human approval, a support ticket router, reverse-order compensation, a live React Flow graph, an admin-only development Chaos panel, and a seeded service-backed chaos suite. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The chaos harness forces MockLLM and isolated local services; measured results and limitations are published in [docs/CHAOS-REPORT.md](docs/CHAOS-REPORT.md).
 
 ## Architecture
 
@@ -165,6 +165,21 @@ For a local demonstration, set CHAOS_ENABLED=true and NODE_ENV=development in yo
 Supervisors spawn only this repository's child process, consume generation-specific Redis kill commands in that child, and restart it after CHAOS_RESTART_DELAY_MS (default 1000). No Docker socket, arbitrary PID or shell execution endpoint is exposed. Normal mode retains tsx watch. Chaos mode supervises direct app processes; restart pnpm dev after API/worker source edits. Ctrl+C/pnpm dev:stop still stop the managed group. After a forced supervisor stop on Windows, startup may wait up to ten seconds for its old Redis lease to expire; an existing live supervisor cannot be displaced.
 
 Faults and model profiles expire after five minutes. Slow/flaky simulation applies before future classify/draft calls in this queue; it does not change an already prepared approval draft or simulate real provider billing. Flaky mode raises synthetic retryable 429/500 errors; tests always use MockLLM. Reset the model profile and clear persistent run faults when finished, then return CHAOS_ENABLED=false. See [STEP-9.md](docs/STEP-9.md) for three short manual checks and exact endpoints.
+
+## Measured chaos suite (Step 10)
+
+Measured locally: **500/500 terminal runs**, 421 succeeded and 79 compensated; **zero duplicate refunds, duplicate email intents, duplicate Mailpit captures, lost runs or stuck runs**. The receiver captured 579 intended messages, including 79 compensation corrections. Worker recovery p50/p95/p99 was 3119/5856/7134 ms (113 samples); API recovery was 2348/2726/3457 ms (44 samples). The measured campaign used `pnpm chaos --runs 500 --seed 20261116 --timeout-ms 600000`; the CLI's default wait limit remains 120000 ms. See the [generated report](docs/CHAOS-REPORT.md) for configuration and boundaries.
+
+With local MongoDB, Redis and Mailpit running, `pnpm chaos` starts 500 mock support workflows in an isolated temporary database/queue. A seeded schedule injects worker/API crashes, temporary/permanent errors, delays, distinct duplicate job deliveries and crashes during compensation. A synthetic admin approves the tickets; no real customer or model service is used. The CLI checks MongoDB outcomes/effect receipts and actual Mailpit captures, then writes Markdown and JSON reports. Any invariant violation or incomplete evidence exits nonzero.
+
+```powershell
+docker compose up -d
+pnpm chaos
+# Lightweight CI-sized workload; keeps its report separate:
+pnpm chaos --runs 50 --seed 20261116 --report-dir docs/chaos-ci
+```
+
+See [STEP-10.md](docs/STEP-10.md) for fault rates, options, invariants, cleanup and recovery definitions, and [CHAOS-REPORT.json](docs/CHAOS-REPORT.json) for per-run outcomes/event timestamps. Worker/API recovery percentiles are separate and reflect local test settings, not production SLAs. The seed reproduces the fault schedule, not execution timing. A correction is a separate intended email; SMTP capture deduplication depends on configured Mailpit storage. The workload uses one worker and duplicate redelivery; existing integration tests separately cover concurrent effect races. CI runs 50 tickets with a zero-violation gate and preserves the generated report as an artifact.
 
 ## Human approval gates (Step 5)
 

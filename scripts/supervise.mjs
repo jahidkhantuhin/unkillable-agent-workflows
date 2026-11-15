@@ -90,7 +90,7 @@ const heartbeat = setInterval(
   () =>
     void (async () => {
       const owned = await redis.eval(
-        "if redis.call('GET',KEYS[1]) == ARGV[1] then return redis.call('EXPIRE',KEYS[1],10) end return 0",
+        "local current=redis.call('GET',KEYS[1]); if current == ARGV[1] then return redis.call('EXPIRE',KEYS[1],10) elseif not current then redis.call('SET',KEYS[1],ARGV[1],'EX',10); return 1 end return 0",
         1,
         lease,
         owner,
