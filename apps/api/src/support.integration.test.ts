@@ -377,6 +377,21 @@ describe.skipIf(!uri || !redis || !mailpit)(
         () => runs.get(run.id),
         (value) => value?.status === 'compensating',
       );
+      // The status is committed before the failing correction finishes. Keep SMTP
+      // rejected until BullMQ records that execution as failed, so recovery cannot
+      // coalesce with its still-rejecting in-flight promise on a faster CI runner.
+      await until(
+        async () => (await queue.getJob(`${run.id}-1`))?.getState(),
+        (state) => state === 'failed',
+      );
+      expect(
+        (await runs.events(run.id)).some(
+          (event) =>
+            event.type === 'CUSTOM' &&
+            event.name === 'compensation.failed' &&
+            event.value.nodeId === 'send_correction_or_void',
+        ),
+      ).toBe(true);
       const failed = await runs.reliability().details(run.id);
       expect(failed.refunds).toHaveLength(1);
       expect(failed.outbox[0]?.status).toBe('failed');
