@@ -15,10 +15,12 @@ import {
   bootstrapReliabilityIndexes,
   approvalIndexes,
   supportIndexes,
+  startChaosRuntime,
 } from '@unkillable/storage';
 import { createExecutor } from './executor';
 import { MailpitMailer, supportDependencies } from './support-adapters';
 import { RedisFaultInjector } from './faults';
+import { chaosEnabled } from '@unkillable/shared';
 const config = {
   ...infrastructureSchema.parse(process.env),
   ...workerConfigSchema.parse(process.env),
@@ -45,7 +47,13 @@ const executor = await createExecutor(
   config.DEMO_NODE_DELAY_MS,
   config.NODE_RETRY_POLICIES,
   supportDependencies(repository, config, (mail) => smtp.deliver(mail)),
-  new RedisFaultInjector(connection, config.CHAOS_ENABLED === 'true'),
+  new RedisFaultInjector(
+    connection,
+    chaosEnabled(process.env),
+    undefined,
+    undefined,
+    config.RUN_QUEUE_NAME,
+  ),
   (mail) => smtp.deliver(mail),
 );
 connection.on('error', (err) =>
@@ -73,7 +81,14 @@ const worker = new Worker(
     maxStalledCount: config.WORKER_MAX_STALLED_COUNT,
   },
 );
+let stopChaos = async () => {};
 worker.on('ready', () => {
+  stopChaos = startChaosRuntime(
+    connection,
+    config.RUN_QUEUE_NAME,
+    'worker',
+    chaosEnabled(process.env),
+  );
   logger.info('Worker ready');
   process.send?.({ type: 'worker-ready' });
 });
@@ -172,6 +187,7 @@ async function shutdown() {
   if (closing) return;
   closing = true;
   clearInterval(heartbeat);
+  await stopChaos();
   clearInterval(maintenance);
   const timeout = setTimeout(() => process.exit(1), 20000).unref();
   await worker.close();

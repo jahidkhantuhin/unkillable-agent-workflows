@@ -7,6 +7,7 @@ import { Navigation } from '@/components/navigation';
 import { UserMenu } from '@/components/user-menu';
 import { serverIdentity } from '@/lib/server-auth';
 import './globals.css';
+import { ChaosBanner } from '@/components/chaos-panel';
 export const metadata: Metadata = {
   title: 'Unkillable · Agent Workflows',
   description: 'Durable agent workflows. Human control. Proof of recovery.',
@@ -56,6 +57,7 @@ export default async function RootLayout({
                   <UserMenu />
                 </div>
               </header>
+              <ChaosBanner />
               <main className="mx-auto max-w-7xl px-6 py-12 lg:px-12">
                 {children}
               </main>

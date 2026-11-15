@@ -14,6 +14,7 @@ const result = spawnSync(
     'apps/api/src/support.integration.test.ts',
     'apps/worker/src/recovery.integration.test.ts',
     'apps/worker/src/saga.integration.test.ts',
+    'apps/api/src/chaos.integration.test.ts',
   ],
   {
     stdio: 'inherit',

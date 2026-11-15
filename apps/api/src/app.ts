@@ -15,12 +15,15 @@ import { DeadLetterService } from './services/dead-letters';
 import { ApprovalService } from './services/approvals';
 import { approvalRoutes } from './routes/approvals';
 import { ticketRoutes } from './routes/tickets';
+import { chaosRoutes } from './routes/chaos';
+import type { ChaosService } from './services/chaos';
 export function createApp(
   deps: HealthDependencies,
   origins = ['http://localhost:3000'],
   level = 'info',
   authService?: AuthService,
   runService?: RunService,
+  chaosService?: ChaosService,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -59,6 +62,8 @@ export function createApp(
   app.use(healthRoutes(deps));
   if (authService) app.use('/auth', authRoutes(authService, origins));
   if (authService && runService) {
+    if (chaosService)
+      app.use('/chaos', chaosRoutes(chaosService, authService, origins));
     app.use('/tickets', ticketRoutes(runService, authService, origins));
     app.use(
       '/approvals',

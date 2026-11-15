@@ -73,7 +73,7 @@ The key format is unkillable:fault:RUN_UUID:NODE:PHASE, where PHASE is before or
 
 throw_once is consumed atomically and raises a retryable error. throw_always remains until cleared/expired and raises a permanent error. delay_ms remains until cleared/expired and accepts integer delays from 1 to 30000 ms. crash_process is consumed atomically before process.exit(137), so replacement workers do not repeatedly hit the same crash flag. Hooks run inside durable retries for normal task work; compensation retries come from worker recovery instead. Only local operators with Redis access can set these flags at this step; no remote mutation endpoint is added.
 
-A deliberately crashed worker has no automatic supervisor yet. Stop the managed app session with pnpm dev:stop and restart pnpm dev to start a replacement. An abandoned queue job recovers through BullMQ's lock/stalled-job handling; a compensating run is also found by maintenance. Remove persistent flags and reset CHAOS_ENABLED=false when finished.
+Step 9 now starts automatic API/worker supervisors when root pnpm dev runs with CHAOS_ENABLED=true in development. Its browser controls replace the need to type these Redis commands. Without a supervisor, stop the managed app session with pnpm dev:stop and restart pnpm dev to start a replacement. An abandoned queue job recovers through BullMQ's lock/stalled-job handling; a compensating run is also found by maintenance. See [STEP-9.md](STEP-9.md). Remove persistent flags and reset CHAOS_ENABLED=false when finished.
 
 ## Verification
 

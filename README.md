@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–8 provide durable execution, human approval, a support ticket router, reverse-order compensation, optional Redis-controlled fault hooks, and a live React Flow graph with node inspection and grouped timeline. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The Chaos UI and measured chaos report remain later steps; no chaos-report numbers are claimed.
+Steps 1–9 provide durable execution, human approval, a support ticket router, reverse-order compensation, a live React Flow graph, and an admin-only development Chaos panel with supervised API/worker restart. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The measured chaos report remains Step 10; no chaos-report numbers are claimed.
 
 ## Architecture
 
@@ -156,7 +156,15 @@ A terminal support-node failure after effects changes the run to compensating. T
 
 No captured email can be recalled: the correction is a separate Mailpit message, with its own stable Message-ID. Refund cards show active/reversed; email cards distinguish reply/correction and mark the original voided. The timeline shows compensation actions and failures. Historical forward receipts/checkpoints remain evidence of what happened; they are not deleted or rewritten as if the effects never occurred.
 
-CHAOS_ENABLED=false is the default. When explicitly enabled on the worker, per-run/node Redis flags support throw_once, throw_always, delay_ms and crash_process before/after work, including compensation. There is no chaos API/UI or process supervisor yet. See [docs/STEP-7.md](docs/STEP-7.md) for exact local commands, recovery behavior, safeguards and verification. Keep the flag disabled during normal use.
+CHAOS_ENABLED=false is the default. In development, per-run/node Redis flags support throw_once, throw_always, delay_ms and crash_process before/after work, including compensation. Step 9 adds the browser controls and supervisors below. See [docs/STEP-7.md](docs/STEP-7.md) for underlying hook behavior and [docs/STEP-9.md](docs/STEP-9.md) for current setup. Keep the flag disabled during normal use.
+
+## Chaos control panel (Step 9)
+
+For a local demonstration, set CHAOS_ENABLED=true and NODE_ENV=development in your existing .env, then restart pnpm dev. The launcher uses API/worker supervisors in this mode, and shows a red warning banner for signed-in users. As admin, open Chaos to crash either process, inspect up/down/restarting status and restart counts, or apply temporary slow/flaky model simulation. Run detail also offers node/phase-specific faults, including crash worker at this node. Mutations require admin permission, a trusted Origin and enabled development mode; disabled/production actions are refused. Supervisors themselves refuse disabled/production startup.
+
+Supervisors spawn only this repository's child process, consume generation-specific Redis kill commands in that child, and restart it after CHAOS_RESTART_DELAY_MS (default 1000). No Docker socket, arbitrary PID or shell execution endpoint is exposed. Normal mode retains tsx watch. Chaos mode supervises direct app processes; restart pnpm dev after API/worker source edits. Ctrl+C/pnpm dev:stop still stop the managed group. After a forced supervisor stop on Windows, startup may wait up to ten seconds for its old Redis lease to expire; an existing live supervisor cannot be displaced.
+
+Faults and model profiles expire after five minutes. Slow/flaky simulation applies before future classify/draft calls in this queue; it does not change an already prepared approval draft or simulate real provider billing. Flaky mode raises synthetic retryable 429/500 errors; tests always use MockLLM. Reset the model profile and clear persistent run faults when finished, then return CHAOS_ENABLED=false. See [STEP-9.md](docs/STEP-9.md) for three short manual checks and exact endpoints.
 
 ## Human approval gates (Step 5)
 
@@ -176,7 +184,7 @@ Demo controls keep Start demo run right-aligned, alongside a bordered Require hu
 
 **What the worker does:** The API accepts requests and queues jobs. The worker performs the workflow work. The durability demo uses no AI model and sends no emails or payments. The support workflow defaults to MockLLM, records fake refunds in MongoDB, and sends replies only to local Mailpit. No real payment or customer email is sent.
 
-**What happens if it crashes:** A replacement worker picks up the abandoned job and resumes from the last saved checkpoint. The interrupted step may run again; completed, checkpointed steps are preserved. A replacement worker must be started for recovery to happen; automatic process supervision comes in a later step.
+**What happens if it crashes:** A replacement worker picks up the abandoned job and resumes from the last saved checkpoint. The interrupted step may run again; completed, checkpointed steps are preserved. Step 9's enabled development supervisor starts the replacement automatically. Without that supervisor, a replacement must be started manually. Process restart and BullMQ lock/stalled-job recovery are separate delays.
 
 Sign in as the seeded admin, open **Runs**, enter a test title and notice content, choose a delivery scenario, and choose **Start demo run**. Approvers can start runs too; viewers can inspect them. The nodes are `prepare → summarize → complete`, with a configurable delay so progress is visible. Workflow versions 2 and 3 queue one local notice at complete; version 3 adds the optional approval gate and existing version 1 runs remain pure. No model, payment, email, or external action is called. The list refreshes automatically; each detail page shows the timeline, checkpointed steps, saved state, reconnect status, recovery events, effect receipts, and outbox deliveries.
 
@@ -186,7 +194,7 @@ The API saves the queued run/event transactionally, then adds a BullMQ job with 
 
 `GET /runs/:id/events` streams append-only MongoDB events with numeric per-run SSE IDs. Last-Event-ID resumes strictly after that sequence; a fresh client can use ?after=N. Invalid/ahead cursors are rejected. Completed runs replay through the same endpoint. Heartbeats and session rechecks occur every 15 seconds; writes respect backpressure, headers disable buffering, and disconnects stop polling. The Next.js proxy forwards the streaming body and cursor header. EventSource reconnects automatically; the UI deduplicates sequences and reconstructs history after refresh.
 
-New optional settings in .env.example: RUN_QUEUE_NAME=workflow-runs, WORKER_LOCK_DURATION_MS=15000, WORKER_STALLED_INTERVAL_MS=5000, WORKER_MAX_STALLED_COUNT=3, DEMO_NODE_DELAY_MS=1500. API and worker must share a queue name. Locks renew every half lock duration; replacement workers recover expired locks during stalled scans. Exhausted stalled jobs become failed runs. Checkpoints are retained without TTL. There is no supervisor/kill button yet. Step 5 uses waiting_approval and cancelled for review/rejection; compensation gains behavior in a later step.
+Optional settings in .env.example: RUN_QUEUE_NAME=workflow-runs, WORKER_LOCK_DURATION_MS=15000, WORKER_STALLED_INTERVAL_MS=5000, WORKER_MAX_STALLED_COUNT=3, DEMO_NODE_DELAY_MS=1500. API and worker must share a queue name. Locks renew every half lock duration; replacement workers recover expired locks during stalled scans. Exhausted stalled jobs enter failure handling; support effects can require compensation. Checkpoints are retained without TTL. Step 5 adds waiting_approval/cancelled, Step 7 implements compensation, and Step 9 adds development supervision and kill controls.
 
 See [docs/STEP-3.md](docs/STEP-3.md) for boundaries and verification. Shared Node-only run/event persistence lives in `packages/storage`; browser code only imports shared contracts.
 

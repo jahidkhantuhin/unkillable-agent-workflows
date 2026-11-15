@@ -9,6 +9,14 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+try {
+  process.loadEnvFile(join(root, '.env'));
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
+const chaos =
+  process.env.CHAOS_ENABLED === 'true' &&
+  (process.env.NODE_ENV ?? 'development') === 'development';
 const require = createRequire(join(root, 'package.json'));
 const windows = process.platform === 'win32';
 const stateFile = join(
@@ -104,14 +112,18 @@ if (process.argv.includes('--stop')) {
       {
         name: 'api',
         cwd: join(root, 'apps/api'),
-        entry: tsx,
-        args: ['watch', '--env-file=../../.env', 'src/index.ts'],
+        entry: chaos ? join(root, 'scripts/supervise.mjs') : tsx,
+        args: chaos
+          ? ['api']
+          : ['watch', '--env-file=../../.env', 'src/index.ts'],
       },
       {
         name: 'worker',
         cwd: join(root, 'apps/worker'),
-        entry: tsx,
-        args: ['watch', '--env-file=../../.env', 'src/index.ts'],
+        entry: chaos ? join(root, 'scripts/supervise.mjs') : tsx,
+        args: chaos
+          ? ['worker']
+          : ['watch', '--env-file=../../.env', 'src/index.ts'],
       },
     ];
     const children = [];

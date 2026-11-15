@@ -9,6 +9,7 @@ import { SupportOutputs } from './support-outputs';
 import { WorkflowGraph } from './workflow-graph';
 import { advanceRun, mergeEvents } from '../lib/run-model';
 import { observeRun } from '../lib/run-stream';
+import { RunChaosActions } from './chaos-panel';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
@@ -79,6 +80,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         <RunStatus status={run.status} />
       </div>
       <WorkflowGraph run={run} events={events} />
+      <RunChaosActions run={run} />
       {['compensating', 'compensated'].includes(run.status) && (
         <section
           role="status"

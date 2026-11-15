@@ -62,7 +62,7 @@ describe.skipIf(!uri || !redisUrl || !mailpit)(
         0,
         {},
         supportDependencies(runs, config, (mail) => smtp.deliver(mail)),
-        new RedisFaultInjector(redis, true),
+        new RedisFaultInjector(redis, true, undefined, undefined, name),
         (mail) => smtp.deliver(mail),
       );
     }, 30000);
@@ -239,7 +239,7 @@ describe.skipIf(!uri || !redisUrl || !mailpit)(
         0,
         {},
         supportDependencies(runs, config, (mail) => smtp.deliver(mail)),
-        new RedisFaultInjector(redis, true),
+        new RedisFaultInjector(redis, true, undefined, undefined, name),
         async (mail) => {
           await smtp.deliver(mail);
           if (!lost) {
@@ -306,6 +306,7 @@ describe.skipIf(!uri || !redisUrl || !mailpit)(
             SUPPORT_LLM_PROVIDER: 'mock',
             ORGMIND_RETRIEVER_ENABLED: 'false',
             CHAOS_ENABLED: 'true',
+            NODE_ENV: 'development',
             WORKER_LOCK_DURATION_MS: '2000',
             WORKER_STALLED_INTERVAL_MS: '1000',
             LOG_LEVEL: 'warn',

@@ -26,6 +26,20 @@ function fixture(enabled = true) {
   };
 }
 describe('Redis fault controls', () => {
+  it('simulates slow and flaky model calls without invoking a provider', async () => {
+    const f = fixture();
+    const key = 'unkillable:chaos:workflow-runs:llm';
+    f.flags.set(key, '{"mode":"slow","delayMs":20}');
+    await f.injector.at('run', 'classify', 'before');
+    expect(f.sleep).toHaveBeenCalledWith(20);
+    f.flags.set(key, '{"mode":"flaky","rate":1}');
+    await expect(
+      f.injector.at('run', 'draft_reply', 'before'),
+    ).rejects.toMatchObject({ name: 'RetryableError' });
+    await f.injector.at('run', 'send_email', 'before');
+    f.flags.set(key, '{"mode":"off"}');
+    await f.injector.at('run', 'classify', 'before');
+  });
   it('does not even read Redis when disabled', async () => {
     const f = fixture(false);
     f.flags.set(faultKey('run', 'classify'), '{"mode":"crash_process"}');

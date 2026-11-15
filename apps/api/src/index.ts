@@ -11,6 +11,9 @@ import { Queue } from 'bullmq';
 import { RunRepository } from '@unkillable/storage';
 import { RunService } from './services/runs';
 import { closeRunStreams } from './controllers/runs';
+import { ChaosService } from './services/chaos';
+import { startChaosRuntime } from '@unkillable/storage';
+import { chaosEnabled } from '@unkillable/shared';
 const config = configSchema.parse(process.env);
 const logger = pino({ level: config.LOG_LEVEL });
 const mongo = new MongoClient(config.MONGODB_URI, {
@@ -67,10 +70,24 @@ const app = createApp(
   config.LOG_LEVEL,
   new AuthService(auth, memberships, config.BETTER_AUTH_URL),
   runService,
+  new ChaosService(
+    redis,
+    runService.repository,
+    config.RUN_QUEUE_NAME,
+    process.env,
+  ),
 );
-const server = app.listen(config.API_PORT, () =>
-  logger.info({ port: config.API_PORT }, 'API listening'),
-);
+let stopChaos = async () => {};
+const server = app.listen(config.API_PORT, () => {
+  logger.info({ port: config.API_PORT }, 'API listening');
+  stopChaos = startChaosRuntime(
+    redis,
+    config.RUN_QUEUE_NAME,
+    'api',
+    chaosEnabled(process.env),
+  );
+  process.send?.({ type: 'api-ready' });
+});
 server.on('error', (err) => {
   logger.fatal({ err }, 'API failed to listen');
   redis.disconnect();
@@ -82,6 +99,7 @@ async function shutdown() {
   if (closing) return;
   closing = true;
   clearInterval(dispatchTimer);
+  await stopChaos();
   closeRunStreams();
   const timeout = setTimeout(() => {
     server.closeAllConnections();

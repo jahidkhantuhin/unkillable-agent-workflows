@@ -6,6 +6,7 @@ import { createServer } from 'node:net';
 import { createServer as httpServer } from 'node:http';
 import { MongoClient } from 'mongodb';
 import { Queue } from 'bullmq';
+import { Redis } from 'ioredis';
 const root = process.cwd();
 if (!process.env.MONGODB_URI || !process.env.REDIS_URL)
   throw new Error(
@@ -64,6 +65,19 @@ async function cleanup() {
   }
   const mongo = new MongoClient(uri.toString());
   await mongo.connect();
+  const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
+  const keys = await redis.keys(`unkillable:chaos:${name}:*`);
+  if (keys.length) await redis.del(...keys);
+  const records = await mongo
+    .db(name)
+    .collection('runs')
+    .find({}, { projection: { id: 1 } })
+    .toArray();
+  for (const row of records) {
+    const flags = await redis.keys(`unkillable:fault:${row.id}:*`);
+    if (flags.length) await redis.del(...flags);
+  }
+  redis.disconnect();
   await mongo.db(name).dropDatabase();
   await mongo.close();
 }
@@ -100,10 +114,20 @@ const control = httpServer(async (req, res) => {
   }
 });
 control.listen(4101, '127.0.0.1');
-function child(args: string[], cwd = root, production = false) {
+function child(
+  args: string[],
+  cwd = root,
+  production = false,
+  supervised = false,
+) {
   const proc = spawn(process.execPath, args, {
     cwd,
-    env: { ...env, NODE_ENV: production ? 'production' : 'test' },
+    env: {
+      ...env,
+      NODE_ENV: production ? 'production' : supervised ? 'development' : 'test',
+      CHAOS_ENABLED: supervised ? 'true' : 'false',
+      CHAOS_RESTART_DELAY_MS: '300',
+    },
     stdio: 'inherit',
     windowsHide: true,
   });
@@ -122,8 +146,8 @@ try {
       code === 0 ? resolve() : reject(new Error('E2E seed failed')),
     );
   });
-  child(['--import', 'tsx', resolve(root, 'apps/api/src/index.ts')]);
-  child(['--import', 'tsx', resolve(root, 'apps/worker/src/index.ts')]);
+  child([resolve(root, 'scripts/supervise.mjs'), 'api'], root, false, true);
+  child([resolve(root, 'scripts/supervise.mjs'), 'worker'], root, false, true);
   const require = createRequire(resolve(root, 'apps/web/package.json'));
   child(
     [

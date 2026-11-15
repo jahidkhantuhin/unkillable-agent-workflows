@@ -57,4 +57,4 @@ References: [React Flow custom nodes](https://reactflow.dev/learn/customization/
 
 ## v0.5 milestone
 
-Step 8 is the intended v0.5 milestone: durable runs, approvals, support workflow, compensation and a live graph. The user manages Git. No commit, tag or push is performed by this step; create the v0.5 tag on the reviewed commit when ready. Step 9 has not started.
+Step 8 is the intended v0.5 milestone: durable runs, approvals, support workflow, compensation and a live graph. The user manages Git. No commit, tag or push is performed by this step; create the v0.5 tag on the reviewed commit when ready. Step 9 now adds supervised browser chaos controls; see [STEP-9.md](STEP-9.md). Its extended smoke harness also uses temporary enabled development supervisors to test the Chaos panel, while keeping MockLLM and the isolated database/queue.
