@@ -15,13 +15,16 @@ const sections = [
   'Policies',
   'Moderation',
 ];
-export function Navigation() {
+export function Navigation({
+  className,
+  onNavigate,
+}: { className?: string; onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const { identity } = useAuth();
   return (
     <nav
       aria-label="Main navigation"
-      className="mt-4 flex flex-wrap gap-2 lg:flex-col"
+      className={cn('mt-4 flex flex-wrap gap-2 lg:flex-col', className)}
     >
       {sections.map((name, index) => {
         const permission =
@@ -37,6 +40,7 @@ export function Navigation() {
           <Link
             key={name}
             href={href}
+            onClick={onNavigate}
             aria-current={active ? 'page' : undefined}
             className={cn(
               'flex items-center justify-between rounded-lg px-3 py-3 text-sm hover:bg-muted hover:text-foreground',

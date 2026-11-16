@@ -6,6 +6,8 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
+Below 1024px, the shared app shell uses a compact top bar with the app title, theme control and collapsible navigation button. Status/account controls live inside that menu; navigation or Escape closes it. At 1024px and above, the desktop sidebar/header are shown.
+
 Steps 1–12 provide durable execution, human approval, a support ticket router, async content moderation, reverse-order compensation, a live React Flow graph, an admin-only development Chaos panel, a seeded service-backed chaos suite, and versioned approval policies with reviewer analytics. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only; moderation publication/notifications are local database records. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The chaos harness forces MockLLM and isolated local services; measured results and limitations are published in [docs/CHAOS-REPORT.md](docs/CHAOS-REPORT.md).
 
 ## Architecture

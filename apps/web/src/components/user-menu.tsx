@@ -34,7 +34,7 @@ export function UserMenu() {
     );
   if (sessionError)
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span role="alert" className="text-xs text-muted-foreground">
           {sessionError}
         </span>
@@ -50,9 +50,11 @@ export function UserMenu() {
       </Button>
     );
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="text-right text-xs">
-        <p>{identity.user.name}</p>
+    <div className="flex min-w-0 flex-wrap items-center gap-3">
+      <div className="min-w-0 max-w-48 text-right text-xs">
+        <p className="truncate" title={identity.user.name}>
+          {identity.user.name}
+        </p>
         <p className="capitalize text-muted-foreground">{identity.role}</p>
       </div>
       <Button variant="outline" onClick={logout} disabled={busy}>
