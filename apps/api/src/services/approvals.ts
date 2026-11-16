@@ -24,13 +24,24 @@ export class ApprovalService {
     private readonly repository: ApprovalRepository,
     private readonly runs: RunService,
   ) {}
-  async list() {
-    return (await this.repository.list()).map(dto);
+  async list(role = 'admin') {
+    return (await this.repository.list())
+      .filter(
+        (record) =>
+          role === 'admin' || record.proposedAction.kind !== 'moderation',
+      )
+      .map(dto);
   }
-  async get(id: string) {
+  async get(id: string, role = 'admin') {
     const record = await this.repository.get(id);
     if (!record)
       throw new HttpError(404, 'APPROVAL_NOT_FOUND', 'Approval not found');
+    if (record.proposedAction.kind === 'moderation' && role !== 'admin')
+      throw new HttpError(
+        403,
+        'FORBIDDEN',
+        'Moderation review requires an administrator',
+      );
     return dto(record);
   }
   async resolve(
@@ -38,8 +49,10 @@ export class ApprovalService {
     version: number,
     decision: ApprovalDecision,
     actorId: string,
+    role = 'admin',
   ) {
     try {
+      await this.get(id, role);
       const runId = await this.repository.resolve(
         id,
         version,

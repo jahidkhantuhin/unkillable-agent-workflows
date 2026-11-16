@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { supportNodeSchema } from './support';
 import { demoNodeSchema } from './runs';
 import { compensationNodeSchema } from './saga';
+import { moderationNodeSchema } from './moderation';
 export const chaosEnabled = (env: {
   CHAOS_ENABLED?: string;
   NODE_ENV?: string;
@@ -14,6 +15,7 @@ export const chaosNodeSchema = z.enum([
     ...demoNodeSchema.options,
     ...supportNodeSchema.options,
     ...compensationNodeSchema.options,
+    ...moderationNodeSchema.options,
   ]),
 ]);
 export const chaosFaultSchema = z.discriminatedUnion('mode', [

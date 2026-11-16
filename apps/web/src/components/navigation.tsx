@@ -13,6 +13,7 @@ const sections = [
   'Chaos',
   'Analytics',
   'Policies',
+  'Moderation',
 ];
 export function Navigation() {
   const pathname = usePathname();

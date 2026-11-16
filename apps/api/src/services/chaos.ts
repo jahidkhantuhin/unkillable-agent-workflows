@@ -13,6 +13,8 @@ import {
   supportNodeSchema,
   demoNodeSchema,
   compensationNodeSchema,
+  moderationNodeSchema,
+  moderationCompensationNodes,
   terminalStatuses,
   type ChaosStatus,
 } from '@unkillable/shared';
@@ -165,10 +167,20 @@ export class ChaosService {
       throw new HttpError(409, 'RUN_TERMINAL', 'Choose an unfinished run');
     const nodes =
       run.workflowId === 'support-ticket-router'
-        ? [...supportNodeSchema.options, ...compensationNodeSchema.options]
-        : run.workflowId === 'durability-demo'
-          ? demoNodeSchema.options
-          : [];
+        ? [
+            ...supportNodeSchema.options,
+            ...compensationNodeSchema.options.filter(
+              (node) =>
+                !(moderationCompensationNodes as readonly string[]).includes(
+                  node,
+                ),
+            ),
+          ]
+        : run.workflowId === 'content-moderation'
+          ? [...moderationNodeSchema.options, ...moderationCompensationNodes]
+          : run.workflowId === 'durability-demo'
+            ? demoNodeSchema.options
+            : [];
     if (!nodes.includes(value.node as never))
       throw new HttpError(
         400,

@@ -7,6 +7,36 @@ import {
   type WorkflowGraph,
 } from '@unkillable/shared';
 import { projectNodes, advanceRun, mergeEvents, elapsed } from './run-model';
+it('marks unchosen moderation branches skipped without skipping an actual admin review', () => {
+  const definition: WorkflowGraph = {
+    ...graph,
+    id: 'content-moderation',
+    nodes: ['auto_decide', 'approval', 'publish', 'reject'].map((id) => ({
+      id,
+      label: id,
+      kind: 'task' as const,
+    })),
+  };
+  const state = { decision: 'allow', completed: ['auto_decide', 'publish'] };
+  const projected = projectNodes(
+    definition,
+    { ...run, workflowId: definition.id, state },
+    [],
+  );
+  expect(projected.find((n) => n.id === 'approval')?.status).toBe('skipped');
+  expect(projected.find((n) => n.id === 'reject')?.status).toBe('skipped');
+  expect(
+    projectNodes(
+      definition,
+      {
+        ...run,
+        workflowId: definition.id,
+        state: { ...state, completed: [...state.completed, 'approval'] },
+      },
+      [],
+    ).find((n) => n.id === 'approval')?.status,
+  ).toBe('succeeded');
+});
 export const graph: WorkflowGraph = {
   id: 'support-ticket-router',
   name: 'Support',

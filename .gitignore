@@ -12,3 +12,4 @@ playwright-report/
 /docs/chaos-smoke/
 /docs/chaos-ci/
 /docs/chaos-diagnostics/
+/.local/moderation/

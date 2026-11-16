@@ -27,3 +27,4 @@ export const demoDefinition = {
     { source: 'approval', target: 'complete' },
   ],
 } as const;
+export * from './moderation-definition';

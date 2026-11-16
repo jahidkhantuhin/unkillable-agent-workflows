@@ -42,6 +42,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [connection, setConnection] = useState('Connecting');
   const support = run.workflowId === 'support-ticket-router';
+  const moderation = run.workflowId === 'content-moderation';
   useEffect(() => {
     setRun(initial);
     setEvents([]);
@@ -65,7 +66,11 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs tracking-widest text-emerald-500">
-            {support ? 'SUPPORT TICKET ROUTER' : 'DURABILITY DEMO'}
+            {moderation
+              ? 'CONTENT MODERATION'
+              : support
+                ? 'SUPPORT TICKET ROUTER'
+                : 'DURABILITY DEMO'}
           </p>
           <h1 className="mt-3 text-4xl font-semibold">Run timeline</h1>
           <h2 className="mt-5 max-w-3xl break-words text-xl font-semibold">
@@ -81,6 +86,26 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         <RunStatus status={run.status} />
       </div>
       <WorkflowGraph run={run} events={events} />
+      {moderation && (
+        <section className="mt-6 rounded-2xl border border-border p-6">
+          <h2 className="font-semibold">Moderation decision</h2>
+          <p className="mt-2 text-sm">
+            {String(run.state.decision ?? 'pending')} ·{' '}
+            {String(run.state.decisionReason ?? '')}
+          </p>
+          <a
+            className="mt-3 inline-block text-sm underline"
+            href={`/api/backend/moderation/${run.id}/content`}
+          >
+            Download original content (admin)
+          </a>
+          <p className="mt-2 text-xs text-muted-foreground">
+            A succeeded workflow can publish or reject content. Publication and
+            notifications are local records only. A compensated run withdraws
+            its publication/decision.
+          </p>
+        </section>
+      )}
       <PolicyTrace value={run.state.policyDecision} />
       <RunChaosActions run={run} />
       {['compensating', 'compensated'].includes(run.status) && (

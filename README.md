@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–11 provide durable execution, human approval, a support ticket router, reverse-order compensation, a live React Flow graph, an admin-only development Chaos panel, a seeded service-backed chaos suite, and versioned approval policies with reviewer analytics. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The chaos harness forces MockLLM and isolated local services; measured results and limitations are published in [docs/CHAOS-REPORT.md](docs/CHAOS-REPORT.md).
+Steps 1–12 provide durable execution, human approval, a support ticket router, async content moderation, reverse-order compensation, a live React Flow graph, an admin-only development Chaos panel, a seeded service-backed chaos suite, and versioned approval policies with reviewer analytics. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only; moderation publication/notifications are local database records. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The chaos harness forces MockLLM and isolated local services; measured results and limitations are published in [docs/CHAOS-REPORT.md](docs/CHAOS-REPORT.md).
 
 ## Architecture
 
@@ -109,7 +109,7 @@ Register at `/register`; accounts start as viewers. Registration accepts name, e
 | -------- | ----------------------------------------------------------------- |
 | viewer   | Runs and Workflows                                                |
 | approver | Viewer access plus starting demos/tickets and resolving approvals |
-| admin    | All sections, including Chaos, Policies and Analytics             |
+| admin    | All sections, including Chaos, Policies, Analytics and Moderation |
 
 Step 2 established section access; Step 5 implements approval actions. Navigation hides unauthorized sections, protected pages recheck the session on the server, and API permission checks read the current membership on every request. Role changes do not require re-login; the navigation refreshes on window focus. Missing memberships fail closed. This is one local workspace (`workspaceId=local`), not a multi-tenant implementation.
 
@@ -184,6 +184,14 @@ pnpm chaos --runs 50 --seed 20261116 --report-dir docs/chaos-ci
 ```
 
 See [STEP-10.md](docs/STEP-10.md) for fault rates, options, invariants, cleanup and recovery definitions, and [CHAOS-REPORT.json](docs/CHAOS-REPORT.json) for per-run outcomes/event timestamps. Worker/API recovery percentiles are separate and reflect local test settings, not production SLAs. The seed reproduces the fault schedule, not execution timing. A correction is a separate intended email; SMTP capture deduplication depends on configured Mailpit storage. The workload uses one worker and duplicate redelivery; existing integration tests separately cover concurrent effect races. CI runs 50 tickets with a zero-violation gate and preserves the generated report as an artifact.
+
+## Async content moderation (Step 12)
+
+As admin, open **Moderation** and submit a Safe, Review or Blocked example. Safe content publishes automatically to a local MongoDB record; review content pauses in the shared Approval Inbox; blocked content is rejected. Approve publication or reject with a reason after downloading the immutable original. A rejected item can have a succeeded workflow: the moderation process completed correctly. The existing graph marks unchosen branches skipped and resumes after reload/restart.
+
+UTF-8 uploads stream to ignored .local/moderation files (up to 10 MiB); checkpoints store references, hashes and bounded previews rather than full files. API/worker must share the local disk. The configured support model settings also select moderation's injected LLM; tests force deterministic mocks. Rules scan the full file; large/uncertain content requires admin review. The queue shows backlog, waiting reviews and current published/rejected decisions in the last 24 hours. No external platform posts or customer emails are sent; notices use the existing transactional outbox/local sink.
+
+Publish/reject/notify reuse executeOnce, retries, durable dispatch, checkpoints, approvals, dead letters and saga compensation. Rollback voids notices and withdraws publication. New moderationItems/publishedContent collections have unique run indexes. The Step 11 policy editor/analytics remain support-only. No new environment variables or dependencies. See [STEP-12.md](docs/STEP-12.md) for focused tests, exact rules/metrics, storage retention and recovery boundaries.
 
 ## Approval policies and analytics (Step 11)
 

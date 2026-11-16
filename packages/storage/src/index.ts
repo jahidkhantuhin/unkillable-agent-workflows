@@ -27,6 +27,12 @@ import { ApprovalRepository } from './approvals';
 import { SupportRepository } from './support';
 import { SagaRepository } from './saga';
 import { PolicyRepository } from './policies';
+import { ModerationRepository } from './moderation';
+import {
+  moderationWorkflowId,
+  moderationStateSchema,
+  moderationItemSchema,
+} from '@unkillable/shared';
 type Stored = Document & { _id: string };
 export interface RunStore {
   create(userId: string, input: DemoInput): Promise<Run>;
@@ -35,6 +41,23 @@ export interface RunStore {
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  moderation() {
+    return new ModerationRepository(this.client, this.db);
+  }
+  async createModeration(
+    userId: string,
+    input: {
+      title: string;
+      file: ReturnType<typeof moderationStateSchema.parse>['file'];
+    },
+  ) {
+    return this.createWorkflow(
+      userId,
+      moderationStateSchema.parse({ ...input, contentId: randomUUID() }),
+      moderationWorkflowId,
+      1,
+    );
+  }
   async chaosRunIds() {
     return this.runs.distinct('id') as Promise<string[]>;
   }
@@ -114,6 +137,21 @@ export class RunRepository implements RunStore {
     try {
       await session.withTransaction(async () => {
         await this.runs.insertOne({ ...run, _id: run.id }, { session });
+        if (workflowId === moderationWorkflowId) {
+          const state = moderationStateSchema.parse(input);
+          const item = moderationItemSchema.parse({
+            id: state.contentId,
+            runId: run.id,
+            title: state.title,
+            file: state.file,
+            status: 'queued',
+            createdAt: now,
+            updatedAt: now,
+          });
+          await this.db
+            .collection<Stored>('moderationItems')
+            .insertOne({ ...item, _id: item.id }, { session });
+        }
         if (workflowId === supportWorkflowId) {
           const state = supportStateSchema.parse(input);
           const ticket = ticketDocumentSchema.parse({
@@ -284,3 +322,5 @@ export * from './support';
 export * from './saga';
 export * from './chaos-runtime';
 export * from './policies';
+export * from './moderation';
+export * from './content-files';

@@ -1,4 +1,8 @@
-import { demoDefinition, supportDefinition } from '@unkillable/workflows';
+import {
+  demoDefinition,
+  supportDefinition,
+  moderationDefinition,
+} from '@unkillable/workflows';
 import type { RunRepository } from '@unkillable/storage';
 import type { RunStatus, DemoInput, TicketInput } from '@unkillable/shared';
 import { HttpError } from '../errors';
@@ -19,6 +23,19 @@ export class RunService {
   async initialize() {
     await this.repository.definition(demoDefinition);
     await this.repository.definition(supportDefinition);
+    await this.repository.definition(moderationDefinition);
+  }
+  async createModeration(
+    userId: string,
+    input: Parameters<RunRepository['createModeration']>[1],
+  ) {
+    const run = await this.repository.createModeration(userId, input);
+    try {
+      await this.dispatch(run.id);
+    } catch (error) {
+      this.warn(error);
+    }
+    return run;
   }
   async create(userId: string, input: DemoInput) {
     const run = await this.repository.create(userId, input);

@@ -28,3 +28,4 @@ export * from './saga';
 export * from './graph';
 export * from './chaos';
 export * from './approval-policy';
+export * from './moderation';

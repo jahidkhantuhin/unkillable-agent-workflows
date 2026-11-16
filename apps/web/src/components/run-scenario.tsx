@@ -23,6 +23,17 @@ export function RunScenario({ state }: { state: unknown }) {
     state &&
     typeof state === 'object' &&
     'kind' in state &&
+    state.kind === 'moderation'
+  )
+    return (
+      <span className="inline-flex rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-700 dark:text-violet-400">
+        Content moderation
+      </span>
+    );
+  if (
+    state &&
+    typeof state === 'object' &&
+    'kind' in state &&
     state.kind === 'support-ticket'
   )
     return (

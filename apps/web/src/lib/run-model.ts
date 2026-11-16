@@ -1,5 +1,6 @@
 import type { RunDTO, RunEvent, WorkflowGraph } from '@unkillable/shared';
 export type NodeStatus =
+  | 'skipped'
   | 'pending'
   | 'running'
   | 'succeeded'
@@ -60,6 +61,9 @@ export function advanceRun(run: RunDTO, event: RunEvent): RunDTO {
   return next;
 }
 export const reverseActions: Record<string, string> = {
+  publish: 'unpublish_content',
+  reject: 'restore_moderation',
+  notify: 'void_moderation_notice',
   close_ticket: 'reopen_ticket',
   send_email: 'send_correction_or_void',
   issue_refund: 'reverse_refund',
@@ -191,6 +195,21 @@ export function projectNodes(
       node.status = 'succeeded';
   }
   const approval = rows.get('approval');
+  if (
+    run.workflowId === 'content-moderation' &&
+    completed.includes('auto_decide')
+  ) {
+    if (run.state.decision === 'allow' && rows.has('reject'))
+      rows.get('reject')!.status = 'skipped';
+    if (run.state.decision === 'reject' && rows.has('publish'))
+      rows.get('publish')!.status = 'skipped';
+    if (
+      approval &&
+      run.state.decision !== 'review' &&
+      !completed.includes('approval')
+    )
+      approval.status = 'skipped';
+  }
   if (run.status === 'waiting_approval' && approval)
     approval.status = 'waiting_approval';
   if (run.status === 'cancelled' && approval) approval.status = 'cancelled';

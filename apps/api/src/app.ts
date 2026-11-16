@@ -19,6 +19,8 @@ import { chaosRoutes } from './routes/chaos';
 import type { ChaosService } from './services/chaos';
 import { PolicyService } from './services/policies';
 import { policyRoutes, analyticsRoutes } from './routes/policies';
+import { moderationRoutes } from './routes/moderation';
+import { ModerationService } from './services/moderation';
 export function createApp(
   deps: HealthDependencies,
   origins = ['http://localhost:3000'],
@@ -26,6 +28,7 @@ export function createApp(
   authService?: AuthService,
   runService?: RunService,
   chaosService?: ChaosService,
+  moderationService?: ModerationService,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -64,6 +67,14 @@ export function createApp(
   app.use(healthRoutes(deps));
   if (authService) app.use('/auth', authRoutes(authService, origins));
   if (authService && runService) {
+    app.use(
+      '/moderation',
+      moderationRoutes(
+        moderationService ?? new ModerationService(runService),
+        authService,
+        origins,
+      ),
+    );
     const policyService = new PolicyService(runService.repository.policies());
     app.use('/policies', policyRoutes(policyService, authService, origins));
     app.use('/analytics', analyticsRoutes(policyService, authService));

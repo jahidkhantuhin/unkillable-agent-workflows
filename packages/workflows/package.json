@@ -20,6 +20,8 @@
   },
   "devDependencies": {},
   "exports": {
+    "./moderation": "./src/moderation.ts",
+    "./moderation-runtime": "./src/moderation-runtime.ts",
     "./support": "./src/support.ts",
     "./support-runtime": "./src/support-runtime.ts",
     "./support-providers": "./src/support-providers.ts",

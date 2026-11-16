@@ -28,6 +28,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 const colors: Record<NodeStatus, string> = {
+  skipped: 'border-border text-muted-foreground',
   pending: 'border-border text-muted-foreground',
   running: 'border-sky-500 text-sky-600 dark:text-sky-400',
   succeeded: 'border-emerald-500 text-emerald-700 dark:text-emerald-400',
@@ -190,6 +191,7 @@ export function WorkflowGraph({
           'retrying',
           'compensating',
           'compensated',
+          'skipped',
         ].map((status) => (
           <span key={status}>{status}</span>
         ))}

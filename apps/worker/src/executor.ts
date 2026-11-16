@@ -2,6 +2,7 @@ import { createDemoRuntime, Command } from '@unkillable/workflows/runtime';
 import { RunRepository } from '@unkillable/storage';
 import { retryOperation } from '@unkillable/workflows/retry';
 import type { SupportDependencies } from '@unkillable/workflows/support';
+import type { ModerationLLM } from '@unkillable/workflows/moderation';
 import {
   demoStateSchema,
   terminalStatuses,
@@ -234,6 +235,7 @@ export async function createExecutor(
   support?: SupportDependencies,
   faults: FaultInjector = noFaults,
   deliver?: (mail: SupportMail) => Promise<void>,
+  moderationModel?: ModerationLLM,
 ) {
   const demo = await createDemoExecutor(
     repository,
@@ -254,8 +256,36 @@ export async function createExecutor(
     | undefined;
   let closeMailer: (() => void) | undefined;
   const inFlight = new Map<string, Promise<void>>();
+  let moderationRuntime:
+    | Promise<
+        Awaited<
+          ReturnType<
+            (typeof import('./moderation-executor'))['createModerationExecutor']
+          >
+        >
+      >
+    | undefined;
   async function execute(id: string, execution?: number) {
     const run = await repository.get(id);
+    if (run?.workflowId === 'content-moderation') {
+      if (!moderationRuntime)
+        moderationRuntime = import('./moderation-executor')
+          .then((module) =>
+            module.createModerationExecutor(
+              repository,
+              uri,
+              dbName,
+              faults,
+              undefined,
+              moderationModel,
+            ),
+          )
+          .catch((error) => {
+            moderationRuntime = undefined;
+            throw error;
+          });
+      return (await moderationRuntime).execute(id, execution);
+    }
     if (run?.workflowId !== 'support-ticket-router')
       return demo.execute(id, execution);
     if (!ticketRuntime)
@@ -305,6 +335,7 @@ export async function createExecutor(
     },
     async close() {
       await demo.close();
+      if (moderationRuntime) await (await moderationRuntime).close();
       if (ticketRuntime) await (await ticketRuntime).close();
       closeMailer?.();
     },

@@ -173,6 +173,7 @@ export const permissionSchema = z.enum([
   'chaos:manage',
   'analytics:read',
   'policies:manage',
+  'moderation:manage',
   'deadletters:read',
   'deadletters:manage',
 ]);
@@ -198,5 +199,6 @@ export const sectionPermissions = {
   chaos: 'chaos:manage',
   analytics: 'analytics:read',
   policies: 'policies:manage',
+  moderation: 'moderation:manage',
   'dead-letters': 'deadletters:read',
 } as const satisfies Record<string, Permission>;

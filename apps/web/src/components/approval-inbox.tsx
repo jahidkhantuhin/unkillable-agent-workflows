@@ -19,6 +19,7 @@ function ApprovalCard({
   const original =
     approval.reviews.find((review) => review.action === 'edit')?.message ??
     String(approval.proposedAction.message ?? '');
+  const moderation = approval.proposedAction.kind === 'moderation';
   const { identity } = useAuth();
   const alreadyReviewed = approval.reviews.some(
     (review) => review.actorId === identity?.user.id,
@@ -67,7 +68,9 @@ function ApprovalCard({
         Pending review ·{' '}
         {approval.proposedAction.kind === 'support-ticket'
           ? 'Support ticket'
-          : 'Local notice'}
+          : moderation
+            ? 'Content moderation'
+            : 'Local notice'}
       </p>
       <Link
         href={`/runs/${approval.runId}`}
@@ -95,7 +98,9 @@ function ApprovalCard({
       <p className="mt-4 text-xs text-muted-foreground">
         {approval.proposedAction.kind === 'support-ticket'
           ? `Proposed action: fake refund USD ${(Number(approval.proposedAction.refundCents) / 100).toFixed(2)}; send reply to ${String(approval.proposedAction.recipient)} through local Mailpit. No real payment or customer email.`
-          : 'Proposed action: store one local notice. No email or payment is sent.'}
+          : moderation
+            ? 'Review the immutable original text before local publication. Approve publishes it; reject records a rejection. No external platform is contacted.'
+            : 'Proposed action: store one local notice. No email or payment is sent.'}
       </p>
       {approval.proposedAction.kind === 'support-ticket' && (
         <p className="mt-3 text-xs text-muted-foreground">
@@ -104,16 +109,28 @@ function ApprovalCard({
         </p>
       )}
       <label className="mt-4 block text-sm font-medium">
-        Draft content
+        {moderation
+          ? 'Content preview (first 500 characters)'
+          : 'Draft content'}
         <textarea
           value={draft}
-          disabled={approval.reviews.length > 0 || alreadyReviewed}
+          disabled={
+            moderation || approval.reviews.length > 0 || alreadyReviewed
+          }
           onChange={(event) => setDraft(event.target.value)}
           maxLength={500}
           rows={3}
           className="mt-2 block w-full rounded-lg border border-border bg-background p-3 text-sm"
         />
       </label>
+      {moderation && (
+        <a
+          className="mt-3 inline-block text-sm underline"
+          href={`/api/backend/moderation/${approval.runId}/content`}
+        >
+          Download full original content before reviewing
+        </a>
+      )}
       <label className="mt-4 block text-sm font-medium">
         Review reason
         <input
@@ -121,7 +138,11 @@ function ApprovalCard({
           onChange={(event) => setReason(event.target.value)}
           maxLength={1000}
           className="mt-2 block w-full rounded-lg border border-border bg-background p-3 text-sm"
-          placeholder="Required when editing or rejecting"
+          placeholder={
+            moderation
+              ? 'Required when rejecting'
+              : 'Required when editing or rejecting'
+          }
         />
       </label>
       {error && (
@@ -134,26 +155,30 @@ function ApprovalCard({
           disabled={busy || alreadyReviewed || draft !== original}
           onClick={() => resolve({ action: 'approve' })}
         >
-          {approval.reviews.length
-            ? 'Approve reviewed draft'
-            : 'Approve original'}
+          {moderation
+            ? 'Approve publication'
+            : approval.reviews.length
+              ? 'Approve reviewed draft'
+              : 'Approve original'}
         </Button>
-        <Button
-          variant="outline"
-          disabled={
-            busy ||
-            alreadyReviewed ||
-            approval.reviews.length > 0 ||
-            !reason.trim() ||
-            !draft.trim() ||
-            draft === original
-          }
-          onClick={() =>
-            resolve({ action: 'edit', payload: { message: draft }, reason })
-          }
-        >
-          Approve edited draft
-        </Button>
+        {!moderation && (
+          <Button
+            variant="outline"
+            disabled={
+              busy ||
+              alreadyReviewed ||
+              approval.reviews.length > 0 ||
+              !reason.trim() ||
+              !draft.trim() ||
+              draft === original
+            }
+            onClick={() =>
+              resolve({ action: 'edit', payload: { message: draft }, reason })
+            }
+          >
+            Approve edited draft
+          </Button>
+        )}
         <Button
           variant="outline"
           disabled={busy || alreadyReviewed || !reason.trim()}

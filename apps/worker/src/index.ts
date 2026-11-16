@@ -15,11 +15,13 @@ import {
   bootstrapReliabilityIndexes,
   approvalIndexes,
   supportIndexes,
+  moderationIndexes,
   startChaosRuntime,
 } from '@unkillable/storage';
 import { createExecutor } from './executor';
 import { MailpitMailer, supportDependencies } from './support-adapters';
 import { RedisFaultInjector } from './faults';
+import { createModerationLLM } from '@unkillable/workflows/support-providers';
 import { chaosEnabled } from '@unkillable/shared';
 const config = {
   ...infrastructureSchema.parse(process.env),
@@ -35,6 +37,8 @@ await bootstrapReliabilityIndexes(mongo.db());
 for (const [name, indexes] of Object.entries(approvalIndexes))
   await mongo.db().collection(name).createIndexes(indexes);
 for (const [name, indexes] of Object.entries(supportIndexes))
+  await mongo.db().collection(name).createIndexes(indexes);
+for (const [name, indexes] of Object.entries(moderationIndexes))
   await mongo.db().collection(name).createIndexes(indexes);
 const repository = new RunRepository(mongo);
 const reliability = repository.reliability();
@@ -63,6 +67,7 @@ const executor = await createExecutor(
     },
   ),
   (mail) => smtp.deliver(mail),
+  createModerationLLM(config),
 );
 connection.on('error', (err) =>
   logger.error({ err }, 'Worker Redis unavailable'),
@@ -109,7 +114,8 @@ async function recordFailedJob(job: Job | undefined, error: unknown) {
   if (typeof id !== 'string') return;
   const run = await repository.get(id);
   if (
-    run?.workflowId === 'support-ticket-router' &&
+    run &&
+    ['support-ticket-router', 'content-moderation'].includes(run.workflowId) &&
     run.execution === Number(job?.data.execution ?? 0)
   ) {
     if (

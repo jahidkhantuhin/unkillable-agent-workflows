@@ -126,6 +126,11 @@ export class ApprovalRepository {
         const doc = await collection.findOne({ id }, { session });
         if (!doc) return null;
         const record = approvalSchema.parse(doc);
+        if (
+          record.proposedAction.kind === 'moderation' &&
+          decision.action === 'edit'
+        )
+          throw new ApprovalConflictError();
         const run = await this.runs.getInSession(record.runId, session);
         if (
           record.status !== 'pending' ||

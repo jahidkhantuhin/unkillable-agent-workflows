@@ -7,6 +7,7 @@ import { createServer as httpServer } from 'node:http';
 import { MongoClient } from 'mongodb';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
+import { LocalContentStorage } from '@unkillable/storage';
 import { setTimeout as delay } from 'node:timers/promises';
 const root = process.cwd();
 if (!process.env.MONGODB_URI || !process.env.REDIS_URL)
@@ -79,6 +80,12 @@ async function cleanup() {
     if (flags.length) await redis.del(...flags);
   }
   redis.disconnect();
+  const contentFiles = new LocalContentStorage();
+  for await (const item of mongo
+    .db(name)
+    .collection('moderationItems')
+    .find({}))
+    await contentFiles.remove(item.file.key).catch(() => {});
   await mongo.db(name).dropDatabase();
   await mongo.close();
 }

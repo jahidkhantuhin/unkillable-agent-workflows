@@ -22,6 +22,11 @@ async function forward(
   const isTicket = pathname === 'tickets' || pathname === 'tickets/examples';
   const isPolicy = pathname === 'policies' || pathname === 'policies/dry-run';
   const isAnalytics = pathname === 'analytics';
+  const isModeration =
+    pathname === 'moderation' ||
+    pathname === 'moderation/uploads' ||
+    /^moderation\/[0-9a-f-]{36}\/content$/.test(pathname);
+  const download = isModeration && pathname.endsWith('/content');
   const isChaos = /^chaos\/(mode|status|kill|fault|clear|llm|toggle)$/.test(
     pathname,
   );
@@ -36,33 +41,36 @@ async function forward(
     !isTicket &&
     !isChaos &&
     !isPolicy &&
-    !isAnalytics
+    !isAnalytics &&
+    !isModeration
   )
     return NextResponse.json(
       { error: { message: 'Not found' } },
       { status: 404 },
     );
   if (
-    isPolicy
-      ? !(pathname === 'policies' && request.method === 'GET') &&
-        request.method !== 'POST'
-      : isAnalytics
-        ? request.method !== 'GET'
-        : isChaos
-          ? request.method !==
-            (/^chaos\/(mode|status)$/.test(pathname) ? 'GET' : 'POST')
-          : isTicket
-            ? request.method !== (pathname === 'tickets' ? 'POST' : 'GET')
-            : isApproval
-              ? request.method !==
-                (pathname.endsWith('/resolve') ? 'POST' : 'GET')
-              : isDeadLetter
+    isModeration
+      ? request.method !== (pathname === 'moderation/uploads' ? 'POST' : 'GET')
+      : isPolicy
+        ? !(pathname === 'policies' && request.method === 'GET') &&
+          request.method !== 'POST'
+        : isAnalytics
+          ? request.method !== 'GET'
+          : isChaos
+            ? request.method !==
+              (/^chaos\/(mode|status)$/.test(pathname) ? 'GET' : 'POST')
+            : isTicket
+              ? request.method !== (pathname === 'tickets' ? 'POST' : 'GET')
+              : isApproval
                 ? request.method !==
-                  (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
-                : isRun
-                  ? request.method !== 'GET' &&
-                    !(pathname === 'runs' && request.method === 'POST')
-                  : (request.method === 'GET') !== (pathname === 'auth/me')
+                  (pathname.endsWith('/resolve') ? 'POST' : 'GET')
+                : isDeadLetter
+                  ? request.method !==
+                    (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
+                  : isRun
+                    ? request.method !== 'GET' &&
+                      !(pathname === 'runs' && request.method === 'POST')
+                    : (request.method === 'GET') !== (pathname === 'auth/me')
   )
     return NextResponse.json(
       { error: { message: 'Method not allowed' } },
@@ -80,19 +88,47 @@ async function forward(
       const value = request.headers.get(name);
       if (value) headers.set(name, value);
     }
+    const upload = pathname === 'moderation/uploads';
+    if (
+      upload &&
+      Number(request.headers.get('content-length') ?? 0) > 10 * 1024 * 1024
+    )
+      return NextResponse.json(
+        { error: { message: 'Text uploads must not exceed 10 MiB' } },
+        { status: 413 },
+      );
     const response = await fetch(
       `${apiURL}/${pathname}${new URL(request.url).search}`,
       {
         method: request.method,
         headers,
-        body: request.method === 'GET' ? undefined : await request.text(),
+        body:
+          request.method === 'GET'
+            ? undefined
+            : upload
+              ? request.body
+              : await request.text(),
+        ...(upload ? { duplex: 'half' as const } : {}),
         cache: 'no-store',
         redirect: 'manual',
         signal: stream
           ? request.signal
-          : AbortSignal.any([request.signal, AbortSignal.timeout(15000)]),
+          : AbortSignal.any([
+              request.signal,
+              AbortSignal.timeout(upload ? 120000 : 15000),
+            ]),
       },
     );
+    if (download && response.ok)
+      return new Response(response.body, {
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'content-disposition':
+            'attachment; filename="moderation-content.txt"',
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+        },
+      });
     if (stream && response.ok)
       return new Response(response.body, {
         status: response.status,

@@ -6,6 +6,8 @@ import {
   supportNodeSchema,
   demoNodeSchema,
   compensationNodeSchema,
+  moderationNodeSchema,
+  moderationCompensationNodes,
   type ChaosStatus,
   type RunDTO,
 } from '@unkillable/shared';
@@ -67,7 +69,11 @@ export function ChaosPanel({ run }: { run?: RunDTO }) {
   const [runs, setRuns] = useState<RunDTO[]>(run ? [run] : []),
     [runId, setRunId] = useState(run?.id ?? ''),
     [node, setNode] = useState(
-      run?.workflowId === 'durability-demo' ? 'complete' : 'send_email',
+      run?.workflowId === 'content-moderation'
+        ? 'publish'
+        : run?.workflowId === 'durability-demo'
+          ? 'complete'
+          : 'send_email',
     );
   const [phase, setPhase] = useState('before'),
     [mode, setMode] = useState('throw_once'),
@@ -146,9 +152,19 @@ export function ChaosPanel({ run }: { run?: RunDTO }) {
   }
   const chosen = run ?? runs.find((item) => item.id === runId);
   const nodes =
-    chosen?.workflowId === 'durability-demo'
-      ? demoNodeSchema.options
-      : [...supportNodeSchema.options, ...compensationNodeSchema.options];
+    chosen?.workflowId === 'content-moderation'
+      ? [...moderationNodeSchema.options, ...moderationCompensationNodes]
+      : chosen?.workflowId === 'durability-demo'
+        ? demoNodeSchema.options
+        : [
+            ...supportNodeSchema.options,
+            ...compensationNodeSchema.options.filter(
+              (node) =>
+                !(moderationCompensationNodes as readonly string[]).includes(
+                  node,
+                ),
+            ),
+          ];
   const disabled = busy || !status?.enabled || !status?.active || !!error;
   return (
     <section
@@ -308,9 +324,11 @@ export function ChaosPanel({ run }: { run?: RunDTO }) {
                 setRunId(event.target.value);
                 const r = runs.find((item) => item.id === event.target.value);
                 setNode(
-                  r?.workflowId === 'durability-demo'
-                    ? 'complete'
-                    : 'send_email',
+                  r?.workflowId === 'content-moderation'
+                    ? 'publish'
+                    : r?.workflowId === 'durability-demo'
+                      ? 'complete'
+                      : 'send_email',
                 );
               }}
             >

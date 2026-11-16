@@ -6,6 +6,6 @@ Do not run Git commands unless explicitly requested. Author: Jahid Khan Tuhin.
 Keep README.md and docs/PROGRESS.md current; record actual verification results.
 Never use real customer, banking, payment, or email side effects. Tests use mocks.
 
-Steps 1–11 are complete, including approval policies and analytics.
-Stop here and wait for the user's authorization before Step 12.
+Steps 1–12 are complete, including async content moderation.
+Stop here and wait for the user's authorization before Step 13.
 Do not run Git commands; the user commits each step.

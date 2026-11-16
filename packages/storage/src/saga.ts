@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { RunRepository } from './index';
 import { ReliabilityRepository } from './reliability';
 import { SupportRepository } from './support';
+import { ModerationRepository } from './moderation';
 import {
   sagaSchema,
   supportStateSchema,
@@ -13,6 +14,9 @@ import {
 
 /** Registry order is the reverse of the forward effect order. */
 export const compensationRegistry = [
+  { forward: 'notify', action: 'void_moderation_notice', key: 'notice' },
+  { forward: 'reject', action: 'restore_moderation', key: 'decision' },
+  { forward: 'publish', action: 'unpublish_content', key: 'publication' },
   { forward: 'close_ticket', action: 'reopen_ticket', key: 'close' },
   { forward: 'send_email', action: 'send_correction_or_void', key: 'reply' },
   { forward: 'issue_refund', action: 'reverse_refund', key: 'refund' },
@@ -60,7 +64,7 @@ export class SagaRepository {
         if (!plan.length) return false;
         const saga = sagaSchema.parse({ plan, completed: [], failure });
         await this.db.collection('outbox').updateMany(
-          { runId: id, kind: 'email', status: 'pending' },
+          { runId: id, status: 'pending' },
           {
             $set: {
               status: 'failed',
@@ -97,6 +101,8 @@ export class SagaRepository {
     if (run?.status === 'compensated') return;
     if (!run || run.status !== 'compensating')
       throw new PermanentError('Compensation requires a compensating run');
+    if (run.workflowId === 'content-moderation')
+      return new ModerationRepository(this.client, this.db).undo(id, node);
     const state = supportStateSchema.parse(run.state);
     if (node === 'send_correction_or_void') {
       // A failed SMTP acknowledgement cannot establish whether the original was captured.

@@ -567,6 +567,25 @@ export class ReliabilityRepository {
         await this.executeOnce(
           `${record.key}:delivery`,
           async ({ session }) => {
+            if (record.payload.kind === 'moderation') {
+              const claimed = await this.db.collection('runs').updateOne(
+                {
+                  id: record.runId,
+                  status: { $in: ['running', 'succeeded'] },
+                },
+                { $inc: { effectFence: 1 } },
+                { session },
+              );
+              if (!claimed.matchedCount)
+                throw new PermanentError(
+                  'Moderation delivery stopped for compensation',
+                );
+              const current = await this.db
+                .collection('outbox')
+                .findOne({ key: record.key, status: 'pending' }, { session });
+              if (!current)
+                throw new PermanentError('Moderation notice was withdrawn');
+            }
             const delivery = localDeliverySchema.parse({
               id: randomUUID(),
               key: record.key,
