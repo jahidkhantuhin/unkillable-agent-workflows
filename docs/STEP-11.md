@@ -25,6 +25,8 @@ These settings affect that terminal only. An existing account's password is not 
 
 ## Rules and decision inputs
 
+Version history displays the policy/version as its heading, followed by a readable local date/time and **Saved by [name]**. The timezone label identifies the browser's local timezone; the original ISO timestamp is available on hover. Expand **Author details** for the full user ID. Current names are presentation-only; stored author IDs/timestamps remain unchanged, and missing accounts fall back to IDs.
+
 The JSON editor validates a small declarative rule language; it does not execute code. Rules are ordered: the first matching rule wins, otherwise fallback applies. All conditions in a rule must match. An empty condition matches everything. Each rule has a unique id, explanation, conditions and outcome. Allowed conditions:
 
 | Condition                       | Meaning                                                                        |
@@ -52,6 +54,8 @@ The same MongoDB transaction records each reviewer, action, timestamp, edited me
 The web UI requires a reason for edits and rejections. For compatibility, older clients can still submit an edit without a reason; analytics shows **Not recorded** rather than inventing one. Reviews are audit records, not training data. Demo notice approvals still work, but are excluded from these support-policy metrics.
 
 ## What each metric means
+
+Feedback cards show the ticket title first, a smaller run ID, and **Rejected/Edited · Reviewed by [name]**. Expand **Reviewer details** for the full reviewer ID. Names are resolved from current user profiles; the durable review keeps the original actor ID. Deleted/missing/unnamed accounts fall back to that ID, and missing titles fall back to the run ID. Older approvals without a saved title use the run's saved title when available.
 
 Metrics cover **all persisted support policy decisions**, not only the first page or completed workflows. Legacy runs without a policy decision and local notice demos are excluded. Refresh to obtain a new snapshot; this is not a live stream or a delivery-success dashboard.
 

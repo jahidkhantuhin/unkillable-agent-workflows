@@ -78,6 +78,7 @@ export const policyVersionDTOSchema = z.object({
   version: z.number().int(),
   policy: approvalPolicySchema,
   actorId: z.string(),
+  actorName: z.string().nullable().default(null),
   createdAt: z.iso.datetime().nullable(),
 });
 export const policiesDTOSchema = z.object({
@@ -124,6 +125,8 @@ export const analyticsDTOSchema = z.object({
     z.object({
       runId: z.string(),
       actorId: z.string(),
+      reviewerName: z.string().nullable().default(null),
+      title: z.string().nullable().default(null),
       action: z.string(),
       original: z.string(),
       edited: z.string().nullable(),

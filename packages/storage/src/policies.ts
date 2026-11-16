@@ -1,4 +1,10 @@
-import type { Db, Document, MongoClient, IndexDescription } from 'mongodb';
+import {
+  ObjectId,
+  type Db,
+  type Document,
+  type MongoClient,
+  type IndexDescription,
+} from 'mongodb';
 import {
   approvalPolicySchema,
   policyDecisionSchema,
@@ -24,6 +30,38 @@ export class PolicyRepository {
     private readonly client: MongoClient,
     private readonly db: Db = client.db(),
   ) {}
+  private async actorNames(ids: string[]) {
+    const actorIds = [...new Set(ids)];
+    const names = new Map<string, string>();
+    if (!actorIds.length) return names;
+    const users = await this.db
+      .collection<Document & { _id: string | ObjectId }>('users')
+      .find(
+        {
+          $or: [
+            { id: { $in: actorIds } },
+            {
+              _id: {
+                $in: [
+                  ...actorIds,
+                  ...actorIds
+                    .filter((id) => ObjectId.isValid(id))
+                    .map((id) => new ObjectId(id)),
+                ],
+              },
+            },
+          ],
+        },
+        { projection: { id: 1, name: 1 } },
+      )
+      .toArray();
+    for (const user of users) {
+      if (typeof user.name !== 'string' || !user.name.trim()) continue;
+      names.set(String(user._id), user.name);
+      if (user.id) names.set(String(user.id), user.name);
+    }
+    return names;
+  }
   async current() {
     const head = await this.db
       .collection<Stored>('approvalPolicyHead')
@@ -49,10 +87,12 @@ export class PolicyRepository {
       .sort({ version: -1 })
       .limit(100)
       .toArray();
+    const names = await this.actorNames(records.map((r) => String(r.actorId)));
     return records.map((r) => ({
       version: Number(r.version),
       policy: approvalPolicySchema.parse(r.policy),
       actorId: String(r.actorId),
+      actorName: names.get(String(r.actorId)) ?? null,
       createdAt: r.createdAt,
     }));
   }
@@ -201,6 +241,7 @@ export class PolicyRepository {
       edited: string | null;
       reason: string | null;
       at: string;
+      title: string | null;
     }[] = [];
     const days = new Map<
       string,
@@ -234,6 +275,10 @@ export class PolicyRepository {
             edited: review.message ?? null,
             reason: review.reason ?? null,
             at: new Date(review.at).toISOString(),
+            title:
+              typeof approval?.title === 'string' && approval.title.trim()
+                ? approval.title
+                : null,
           });
       }
       if (!approval || approval.status === 'pending') continue;
@@ -255,6 +300,56 @@ export class PolicyRepository {
           waits[Math.floor(waits.length / 2)]) /
         2
       : null;
+    const latest = feedback
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 50);
+    const actorIds = [...new Set(latest.map((f) => f.actorId))];
+    const [users, runs] = latest.length
+      ? await Promise.all([
+          this.db
+            .collection<Document & { _id: string | ObjectId }>('users')
+            .find(
+              {
+                $or: [
+                  { id: { $in: actorIds } },
+                  {
+                    _id: {
+                      $in: [
+                        ...actorIds,
+                        ...actorIds
+                          .filter((id) => ObjectId.isValid(id))
+                          .map((id) => new ObjectId(id)),
+                      ],
+                    },
+                  },
+                ],
+              },
+              { projection: { id: 1, name: 1 } },
+            )
+            .toArray(),
+          this.db
+            .collection('runs')
+            .find(
+              { id: { $in: latest.map((f) => f.runId) } },
+              { projection: { id: 1, 'state.title': 1 } },
+            )
+            .toArray(),
+        ])
+      : [[], []];
+    const names = new Map<string, string>();
+    for (const user of users) {
+      if (typeof user.name !== 'string' || !user.name.trim()) continue;
+      names.set(String(user._id), user.name);
+      if (user.id) names.set(String(user.id), user.name);
+    }
+    const titles = new Map(
+      runs.map((run) => [
+        String(run.id),
+        typeof run.state?.title === 'string' && run.state.title.trim()
+          ? run.state.title
+          : null,
+      ]),
+    );
     return {
       scope:
         'All persisted support policy decisions; legacy/demo runs excluded',
@@ -276,7 +371,11 @@ export class PolicyRepository {
         ...d,
         autoApprovedShare: d.autoApproved / d.evaluated,
       })),
-      feedback: feedback.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 50),
+      feedback: latest.map((f) => ({
+        ...f,
+        title: f.title ?? titles.get(f.runId) ?? null,
+        reviewerName: names.get(f.actorId) ?? null,
+      })),
     };
   }
 }

@@ -183,6 +183,10 @@ See [STEP-10.md](docs/STEP-10.md) for fault rates, options, invariants, cleanup 
 
 ## Approval policies and analytics (Step 11)
 
+Reviewer feedback uses the ticket title as its run link and the current reviewer's name for recognition. The run ID appears underneath in smaller text, and expandable Reviewer details retains the full reviewer ID. Missing titles/accounts fall back to IDs.
+
+Policy version history also shows the author's current name, with the full user ID in expandable Author details. Dates/times use the browser's local timezone with a timezone label; hovering the timestamp reveals the original ISO value.
+
 The new-ticket charge amount can be cleared while editing. Enter a whole-number amount in cents before submitting; an explicit 0 is valid, and a blank field is required rather than silently converted to zero.
 
 Admins open **Policies** to edit ordered JSON rules, dry-run them against saved support decisions, activate immutable versions and inspect version history. Rules use risk, proposed refund amount, classifier confidence, synthetic customer tier and the run's creation hour in UTC. Outcomes are automatic approval, one reviewer or two distinct reviewers; refunds/high risk cannot bypass human review. The saved decision/trace appears on run detail and in the inbox. Existing waits retain their policy version, and two-reviewer edits are frozen after the first vote.

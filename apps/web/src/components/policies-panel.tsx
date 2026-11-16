@@ -7,6 +7,17 @@ import {
   dryRunDTOSchema,
 } from '@unkillable/shared';
 import { Button } from './ui/button';
+function formatPolicyDate(value: string | null) {
+  if (!value) return 'Date unavailable';
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).format(new Date(value));
+}
 
 const example = {
   name: 'Safe replies and dual review',
@@ -206,10 +217,27 @@ export function PoliciesPanel() {
                   key={row.version}
                   className="flex flex-wrap items-center justify-between gap-3 text-sm"
                 >
-                  <span>
-                    v{row.version} · {row.policy.name} · {row.createdAt} · actor{' '}
-                    {row.actorId}
-                  </span>
+                  <div className="min-w-0 break-words">
+                    <p className="font-semibold">
+                      v{row.version} · {row.policy.name}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {row.createdAt ? (
+                        <time dateTime={row.createdAt} title={row.createdAt}>
+                          {formatPolicyDate(row.createdAt)}
+                        </time>
+                      ) : (
+                        'Date unavailable'
+                      )}{' '}
+                      · Saved by {row.actorName || row.actorId}
+                    </p>
+                    <details className="mt-2 text-xs text-muted-foreground">
+                      <summary className="cursor-pointer">
+                        Author details
+                      </summary>
+                      <p className="mt-2 break-all">User ID: {row.actorId}</p>
+                    </details>
+                  </div>
                   <Button
                     variant="outline"
                     disabled={busy}

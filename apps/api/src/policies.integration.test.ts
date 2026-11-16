@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import request from 'supertest';
 import { memoryAdapter } from '@better-auth/memory-adapter';
 import { RunRepository } from '@unkillable/storage';
@@ -452,7 +452,47 @@ describe.skipIf(!uri)('versioned approval policies', () => {
         { runId: auto.id },
         { $set: { createdAt: new Date('2026-11-02T12:00:00Z') } },
       );
+    const reviewerId = new ObjectId();
+    await db.collection('users').insertMany([
+      { _id: reviewerId, name: 'Named reviewer', email: 'named@example.test' },
+      {
+        _id: new ObjectId(),
+        id: admin.id,
+        name: 'Local admin',
+        email: 'local-admin@example.test',
+      },
+    ]);
+    await db
+      .collection('approvals')
+      .updateOne(
+        { status: 'edited' },
+        { $set: { 'reviews.0.actorId': reviewerId.toHexString() } },
+      );
     const metrics = await runs.policies().analytics();
+    expect((await runs.policies().history())[0]).toMatchObject({
+      actorId: admin.id,
+      actorName: 'Local admin',
+    });
+    expect(metrics.feedback.find((f) => f.action === 'edit')).toMatchObject({
+      reviewerName: 'Named reviewer',
+      actorId: reviewerId.toHexString(),
+      title: ticket(2).title,
+    });
+    expect(metrics.feedback.find((f) => f.action === 'reject')).toMatchObject({
+      reviewerName: 'Local admin',
+      actorId: admin.id,
+    });
+    await db.collection('users').deleteOne({ _id: reviewerId });
+    await db.collection('users').deleteOne({ id: admin.id });
+    expect((await runs.policies().history())[0]).toMatchObject({
+      actorId: admin.id,
+      actorName: null,
+    });
+    expect(
+      (await runs.policies().analytics()).feedback.find(
+        (f) => f.action === 'edit',
+      ),
+    ).toMatchObject({ reviewerName: null, actorId: reviewerId.toHexString() });
     expect(metrics).toMatchObject({
       evaluated: 4,
       humanRequired: 3,

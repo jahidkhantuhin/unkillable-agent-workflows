@@ -141,14 +141,27 @@ export function ApprovalAnalytics() {
             {data.feedback.map((f, i) => (
               <article
                 key={`${f.runId}-${i}`}
-                className="mt-4 rounded-lg bg-muted p-4 text-sm"
+                className="mt-4 break-words rounded-lg bg-muted p-4 text-sm"
               >
-                <Link className="underline" href={`/runs/${f.runId}`}>
-                  {f.runId}
+                <Link
+                  className="text-base font-semibold underline"
+                  href={`/runs/${f.runId}`}
+                >
+                  {f.title || f.runId}
                 </Link>
+                {f.title && (
+                  <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                    Run ID: {f.runId}
+                  </p>
+                )}
                 <p className="mt-2">
-                  {f.action} · reviewer {f.actorId}
+                  {f.action === 'reject' ? 'Rejected' : 'Edited'} · Reviewed by{' '}
+                  {f.reviewerName || f.actorId}
                 </p>
+                <details className="mt-2 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer">Reviewer details</summary>
+                  <p className="mt-2 break-all">Reviewer ID: {f.actorId}</p>
+                </details>
                 <p className="mt-2">Original: {f.original}</p>
                 {f.edited && <p className="mt-2">Edited: {f.edited}</p>}
                 <p className="mt-2">Reason: {f.reason ?? 'Not recorded'}</p>
