@@ -77,13 +77,19 @@ export async function supportNodeOutput(
         state.ticket.amountCents <= cited.maxRefundCents
           ? state.ticket.amountCents
           : 0;
+      const policyDecision = deps.decidePolicy
+        ? await deps.decidePolicy(runId, state, refundCents)
+        : null;
       return {
+        policyDecision,
         risk: {
           refundCents,
           currency: 'USD',
-          reason: refundCents
-            ? 'Human approval is required before this synthetic duplicate-charge refund and reply.'
-            : 'No automatic refund is eligible. Human approval is required before sending the reply.',
+          reason: policyDecision
+            ? policyDecision.reason
+            : refundCents
+              ? 'Human approval is required before this synthetic duplicate-charge refund and reply.'
+              : 'No automatic refund is eligible. Human approval is required before sending the reply.',
         },
         completed,
       };
@@ -162,10 +168,13 @@ export async function createSupportRuntime(
           state,
         );
         const decision = approvalDecisionSchema.parse(
-          interrupt({
-            message: state.draft.message,
-            refundCents: state.risk.refundCents,
-          }),
+          state.policyDecision?.outcome === 'auto_approve' &&
+            state.risk.refundCents === 0
+            ? { action: 'approve' }
+            : interrupt({
+                message: state.draft.message,
+                refundCents: state.risk.refundCents,
+              }),
         );
         await hooks.approvalFinished?.(String(config.configurable?.thread_id));
         if (decision.action === 'reject')

@@ -7,14 +7,22 @@ import {
   type ApprovalDecision,
 } from '@unkillable/shared';
 import { Button } from './ui/button';
+import { useAuth } from './auth-provider';
+import { PolicyTrace } from './policy-trace';
 function ApprovalCard({
   approval,
   onResolved,
 }: {
   approval: ApprovalDTO;
-  onResolved: (id: string) => void;
+  onResolved: (next: ApprovalDTO) => void;
 }) {
-  const original = String(approval.proposedAction.message ?? '');
+  const original =
+    approval.reviews.find((review) => review.action === 'edit')?.message ??
+    String(approval.proposedAction.message ?? '');
+  const { identity } = useAuth();
+  const alreadyReviewed = approval.reviews.some(
+    (review) => review.actorId === identity?.user.id,
+  );
   const [draft, setDraft] = useState(original);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -34,7 +42,14 @@ function ApprovalCard({
       const body = await response.json();
       if (!response.ok)
         throw new Error(body.error?.message ?? 'Unable to resolve approval');
-      onResolved(approval.id);
+      const current = await fetch(`/api/backend/approvals/${approval.id}`, {
+        cache: 'no-store',
+      });
+      if (!current.ok)
+        throw new Error(
+          'Decision recorded; refresh to see the current review state.',
+        );
+      onResolved(approvalDTOSchema.parse(await current.json()));
     } catch (error) {
       setError(
         error instanceof Error ? error.message : 'Unable to resolve approval',
@@ -63,6 +78,20 @@ function ApprovalCard({
       <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
         {approval.reasoning}
       </p>
+      <p className="mt-3 text-sm">
+        Reviews: {approval.reviews.length}/{approval.requiredApprovals}.{' '}
+        {alreadyReviewed
+          ? 'Your review is recorded. A different reviewer must finish this approval.'
+          : approval.requiredApprovals === 2
+            ? 'Two distinct reviewers are required.'
+            : ''}
+      </p>
+      {approval.reviews.map((review) => (
+        <p key={review.actorId} className="mt-1 text-xs text-muted-foreground">
+          {review.action} · {review.actorId} · {review.at}
+        </p>
+      ))}
+      <PolicyTrace value={approval.proposedAction.policyDecision} />
       <p className="mt-4 text-xs text-muted-foreground">
         {approval.proposedAction.kind === 'support-ticket'
           ? `Proposed action: fake refund USD ${(Number(approval.proposedAction.refundCents) / 100).toFixed(2)}; send reply to ${String(approval.proposedAction.recipient)} through local Mailpit. No real payment or customer email.`
@@ -78,6 +107,7 @@ function ApprovalCard({
         Draft content
         <textarea
           value={draft}
+          disabled={approval.reviews.length > 0 || alreadyReviewed}
           onChange={(event) => setDraft(event.target.value)}
           maxLength={500}
           rows={3}
@@ -85,13 +115,13 @@ function ApprovalCard({
         />
       </label>
       <label className="mt-4 block text-sm font-medium">
-        Rejection reason
+        Review reason
         <input
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           maxLength={1000}
           className="mt-2 block w-full rounded-lg border border-border bg-background p-3 text-sm"
-          placeholder="Required when rejecting"
+          placeholder="Required when editing or rejecting"
         />
       </label>
       {error && (
@@ -101,23 +131,32 @@ function ApprovalCard({
       )}
       <div className="mt-5 flex flex-wrap gap-3">
         <Button
-          disabled={busy || draft !== original}
+          disabled={busy || alreadyReviewed || draft !== original}
           onClick={() => resolve({ action: 'approve' })}
         >
-          Approve original
+          {approval.reviews.length
+            ? 'Approve reviewed draft'
+            : 'Approve original'}
         </Button>
         <Button
           variant="outline"
-          disabled={busy || !draft.trim() || draft === original}
+          disabled={
+            busy ||
+            alreadyReviewed ||
+            approval.reviews.length > 0 ||
+            !reason.trim() ||
+            !draft.trim() ||
+            draft === original
+          }
           onClick={() =>
-            resolve({ action: 'edit', payload: { message: draft } })
+            resolve({ action: 'edit', payload: { message: draft }, reason })
           }
         >
           Approve edited draft
         </Button>
         <Button
           variant="outline"
-          disabled={busy || !reason.trim()}
+          disabled={busy || alreadyReviewed || !reason.trim()}
           onClick={() => resolve({ action: 'reject', reason })}
         >
           Reject
@@ -203,9 +242,15 @@ export function ApprovalInbox() {
         ) : (
           pending.map((approval) => (
             <ApprovalCard
-              key={approval.id}
+              key={`${approval.id}-${approval.version}`}
               approval={approval}
-              onResolved={(id) => setResolved((previous) => [...previous, id])}
+              onResolved={(next) => {
+                setApprovals((previous) =>
+                  previous.map((a) => (a.id === next.id ? next : a)),
+                );
+                if (next.status !== 'pending')
+                  setResolved((previous) => [...previous, next.id]);
+              }}
             />
           ))
         )}

@@ -9,6 +9,7 @@ import {
   type SupportPolicy,
   type DraftReply,
   type SupportMail,
+  type PolicyDecision,
 } from '@unkillable/shared';
 export interface LLM {
   classify(ticket: TicketInput): Promise<unknown>;
@@ -42,6 +43,11 @@ export interface TicketStore {
   ): Promise<void>;
 }
 export type SupportDependencies = {
+  decidePolicy?: (
+    runId: string,
+    state: unknown,
+    refundCents: number,
+  ) => Promise<PolicyDecision>;
   llm: LLM;
   retriever: Retriever;
   payments: PaymentsClient;

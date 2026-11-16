@@ -1,5 +1,7 @@
 # Step 5: Human approval gates
 
+Step 11 adds reviewer feedback: enter **Review reason** before approving an edited draft or rejecting in the web inbox. Support tickets can also require two distinct reviewers according to their saved policy; the first vote keeps the run paused. Demo notice gates still require one reviewer. See [STEP-11.md](STEP-11.md).
+
 The demo can wait for an authorized human before queueing its local notice. It still uses no AI model and sends no emails or payments. Inbox reasoning is a deterministic explanation, not generated model reasoning.
 
 ## How to test locally

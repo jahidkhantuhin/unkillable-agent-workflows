@@ -6,7 +6,6 @@ const descriptions: Record<string, string> = {
   approvals: 'The human approval inbox arrives in Step 5.',
   workflows: 'The support ticket workflow arrives in Step 6.',
   chaos: 'The development chaos control panel arrives in Step 9.',
-  analytics: 'Approval analytics arrive in Step 11.',
 };
 export default async function Section({
   params,

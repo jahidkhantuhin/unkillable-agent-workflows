@@ -17,6 +17,8 @@ import { approvalRoutes } from './routes/approvals';
 import { ticketRoutes } from './routes/tickets';
 import { chaosRoutes } from './routes/chaos';
 import type { ChaosService } from './services/chaos';
+import { PolicyService } from './services/policies';
+import { policyRoutes, analyticsRoutes } from './routes/policies';
 export function createApp(
   deps: HealthDependencies,
   origins = ['http://localhost:3000'],
@@ -62,6 +64,9 @@ export function createApp(
   app.use(healthRoutes(deps));
   if (authService) app.use('/auth', authRoutes(authService, origins));
   if (authService && runService) {
+    const policyService = new PolicyService(runService.repository.policies());
+    app.use('/policies', policyRoutes(policyService, authService, origins));
+    app.use('/analytics', analyticsRoutes(policyService, authService));
     if (chaosService)
       app.use('/chaos', chaosRoutes(chaosService, authService, origins));
     app.use('/tickets', ticketRoutes(runService, authService, origins));

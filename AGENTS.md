@@ -6,6 +6,6 @@ Do not run Git commands unless explicitly requested. Author: Jahid Khan Tuhin.
 Keep README.md and docs/PROGRESS.md current; record actual verification results.
 Never use real customer, banking, payment, or email side effects. Tests use mocks.
 
-Steps 1–10 are complete, including the measured chaos suite and report.
-Stop here and wait for the user's authorization before Step 11.
+Steps 1–11 are complete, including approval policies and analytics.
+Stop here and wait for the user's authorization before Step 12.
 Do not run Git commands; the user commits each step.

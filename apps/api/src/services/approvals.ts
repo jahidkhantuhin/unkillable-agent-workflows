@@ -10,6 +10,10 @@ function dto(
 ) {
   return approvalDTOSchema.parse({
     ...record,
+    reviews: record.reviews.map((review) => ({
+      ...review,
+      at: review.at.toISOString(),
+    })),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
     resolvedAt: record.resolvedAt?.toISOString(),

@@ -50,7 +50,11 @@ export class ApprovalRepository {
     checkpointId: string,
     message: string,
     title = '',
-    context: { proposal?: Record<string, unknown>; reasoning?: string } = {},
+    context: {
+      proposal?: Record<string, unknown>;
+      reasoning?: string;
+      requiredApprovals?: number;
+    } = {},
   ) {
     const session = this.client.startSession();
     try {
@@ -71,6 +75,7 @@ export class ApprovalRepository {
           nodeId: 'approval',
           version: 0,
           status: 'pending',
+          requiredApprovals: context.requiredApprovals ?? 1,
           proposedAction: {
             ...context.proposal,
             ...noticePayloadSchema.parse({ message }),
@@ -129,26 +134,89 @@ export class ApprovalRepository {
         )
           throw new ApprovalConflictError();
         const now = new Date();
+        if (record.reviews.some((review) => review.actorId === actorId))
+          throw new ApprovalConflictError();
+        if (record.reviews.length && decision.action === 'edit')
+          throw new ApprovalConflictError();
+        const reviews = [
+          ...record.reviews,
+          {
+            actorId,
+            action: decision.action,
+            at: now,
+            ...(decision.action === 'edit'
+              ? {
+                  message: decision.payload.message,
+                  ...(decision.reason ? { reason: decision.reason } : {}),
+                }
+              : decision.action === 'reject'
+                ? { reason: decision.reason }
+                : {}),
+          },
+        ];
+        const final =
+          decision.action === 'reject' ||
+          reviews.length >= record.requiredApprovals;
+        const previousEdit = record.reviews.find(
+          (review) => review.action === 'edit',
+        );
+        const effectiveDecision: ApprovalDecision =
+          decision.action === 'approve' && previousEdit?.message
+            ? {
+                action: 'edit',
+                payload: { message: previousEdit.message },
+                ...(previousEdit.reason ? { reason: previousEdit.reason } : {}),
+              }
+            : decision;
         const next = approvalSchema.parse({
           ...record,
-          status:
-            decision.action === 'approve'
+          reviews,
+          status: !final
+            ? 'pending'
+            : effectiveDecision.action === 'approve'
               ? 'approved'
-              : decision.action === 'edit'
+              : effectiveDecision.action === 'edit'
                 ? 'edited'
                 : 'rejected',
           version: version + 1,
-          resolvedBy: actorId,
-          resolvedAt: now,
+          resolvedBy: final ? actorId : undefined,
+          resolvedAt: final ? now : undefined,
           updatedAt: now,
-          decision,
+          decision: final ? effectiveDecision : undefined,
         });
         const changed = await collection.replaceOne(
           { id, version, status: 'pending' },
-          { ...next, _id: record.id },
+          {
+            ...Object.fromEntries(
+              Object.entries(next).filter(([, value]) => value !== undefined),
+            ),
+            _id: record.id,
+          },
           { session },
         );
         if (changed.modifiedCount !== 1) throw new ApprovalConflictError();
+        if (!final) {
+          await this.runs.appendInSession(
+            run.id,
+            {
+              type: 'CUSTOM',
+              name: 'approval.reviewed',
+              value: {
+                approvalId: id,
+                actorId,
+                decision,
+                count: reviews.length,
+                required: record.requiredApprovals,
+              },
+            },
+            {
+              key: `approval:reviewed:${id}:${actorId}`,
+              expectedExecution: run.execution,
+            },
+            session,
+          );
+          return run.id;
+        }
         await this.runs.appendInSession(
           run.id,
           {
@@ -157,7 +225,8 @@ export class ApprovalRepository {
             value: {
               approvalId: id,
               actorId,
-              decision,
+              decision: effectiveDecision,
+              reviews,
               proposedAction: record.proposedAction,
               resolvedAt: now.toISOString(),
               execution: run.execution + 1,

@@ -20,6 +20,8 @@ async function forward(
     /^dead-letters\/[0-9a-f-]{36}(\/(retry|discard))?$/.test(pathname);
   const stream = isRun && pathname.endsWith('/events');
   const isTicket = pathname === 'tickets' || pathname === 'tickets/examples';
+  const isPolicy = pathname === 'policies' || pathname === 'policies/dry-run';
+  const isAnalytics = pathname === 'analytics';
   const isChaos = /^chaos\/(mode|status|kill|fault|clear|llm)$/.test(pathname);
   const isApproval =
     pathname === 'approvals' ||
@@ -30,27 +32,35 @@ async function forward(
     !isDeadLetter &&
     !isApproval &&
     !isTicket &&
-    !isChaos
+    !isChaos &&
+    !isPolicy &&
+    !isAnalytics
   )
     return NextResponse.json(
       { error: { message: 'Not found' } },
       { status: 404 },
     );
   if (
-    isChaos
-      ? request.method !==
-        (/^chaos\/(mode|status)$/.test(pathname) ? 'GET' : 'POST')
-      : isTicket
-        ? request.method !== (pathname === 'tickets' ? 'POST' : 'GET')
-        : isApproval
-          ? request.method !== (pathname.endsWith('/resolve') ? 'POST' : 'GET')
-          : isDeadLetter
-            ? request.method !==
-              (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
-            : isRun
-              ? request.method !== 'GET' &&
-                !(pathname === 'runs' && request.method === 'POST')
-              : (request.method === 'GET') !== (pathname === 'auth/me')
+    isPolicy
+      ? !(pathname === 'policies' && request.method === 'GET') &&
+        request.method !== 'POST'
+      : isAnalytics
+        ? request.method !== 'GET'
+        : isChaos
+          ? request.method !==
+            (/^chaos\/(mode|status)$/.test(pathname) ? 'GET' : 'POST')
+          : isTicket
+            ? request.method !== (pathname === 'tickets' ? 'POST' : 'GET')
+            : isApproval
+              ? request.method !==
+                (pathname.endsWith('/resolve') ? 'POST' : 'GET')
+              : isDeadLetter
+                ? request.method !==
+                  (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
+                : isRun
+                  ? request.method !== 'GET' &&
+                    !(pathname === 'runs' && request.method === 'POST')
+                  : (request.method === 'GET') !== (pathname === 'auth/me')
   )
     return NextResponse.json(
       { error: { message: 'Method not allowed' } },

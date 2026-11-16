@@ -26,6 +26,7 @@ import { ReliabilityRepository } from './reliability';
 import { ApprovalRepository } from './approvals';
 import { SupportRepository } from './support';
 import { SagaRepository } from './saga';
+import { PolicyRepository } from './policies';
 type Stored = Document & { _id: string };
 export interface RunStore {
   create(userId: string, input: DemoInput): Promise<Run>;
@@ -34,6 +35,9 @@ export interface RunStore {
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  policies() {
+    return new PolicyRepository(this.client, this.db);
+  }
   saga() {
     return new SagaRepository(this.client, this.db);
   }
@@ -276,3 +280,4 @@ export * from './approvals';
 export * from './support';
 export * from './saga';
 export * from './chaos-runtime';
+export * from './policies';

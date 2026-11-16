@@ -92,7 +92,11 @@ export async function createSupportExecutor(
           policies[node] ?? defaultRetryPolicy,
         ),
     },
-    deps,
+    {
+      ...deps,
+      decidePolicy: (runId, state, amount) =>
+        repository.policies().decideSupport(runId, state, amount),
+    },
   );
   return {
     close: runtime.close,
@@ -186,8 +190,11 @@ export async function createSupportExecutor(
                 currency: 'USD',
                 citedPolicyId: state.draft.citedPolicyId,
                 citedSnippet: state.draft.citedSnippet,
+                policyDecision: state.policyDecision,
               },
               reasoning: `${state.classification.reason} ${state.risk.reason}`,
+              requiredApprovals:
+                state.policyDecision?.requiredApprovals === 2 ? 2 : 1,
             },
           );
           return;

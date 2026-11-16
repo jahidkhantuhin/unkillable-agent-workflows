@@ -6,7 +6,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 ## Current scope
 
-Steps 1–10 provide durable execution, human approval, a support ticket router, reverse-order compensation, a live React Flow graph, an admin-only development Chaos panel, and a seeded service-backed chaos suite. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The chaos harness forces MockLLM and isolated local services; measured results and limitations are published in [docs/CHAOS-REPORT.md](docs/CHAOS-REPORT.md).
+Steps 1–11 provide durable execution, human approval, a support ticket router, reverse-order compensation, a live React Flow graph, an admin-only development Chaos panel, a seeded service-backed chaos suite, and versioned approval policies with reviewer analytics. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The chaos harness forces MockLLM and isolated local services; measured results and limitations are published in [docs/CHAOS-REPORT.md](docs/CHAOS-REPORT.md).
 
 ## Architecture
 
@@ -109,7 +109,7 @@ Register at `/register`; accounts start as viewers. Registration accepts name, e
 | -------- | ----------------------------------------------------------------- |
 | viewer   | Runs and Workflows                                                |
 | approver | Viewer access plus starting demos/tickets and resolving approvals |
-| admin    | All sections, including Chaos and Analytics                       |
+| admin    | All sections, including Chaos, Policies and Analytics             |
 
 Step 2 established section access; Step 5 implements approval actions. Navigation hides unauthorized sections, protected pages recheck the session on the server, and API permission checks read the current membership on every request. Role changes do not require re-login; the navigation refreshes on window focus. Missing memberships fail closed. This is one local workspace (`workspaceId=local`), not a multi-tenant implementation.
 
@@ -132,7 +132,7 @@ The unique `idempotencyKeys.key` index is tested. Other indexes protect emails, 
 
 ## Support ticket router (Step 6)
 
-Open **Runs → New ticket** as an admin or approver. Load the duplicate-charge example, start it, and inspect classify → retrieve_policy → draft_reply → risk_check → approval → issue_refund → send_email → close_ticket. Every ticket pauses before its effects. Approve the original, edit the reply, or reject with a reason. An approved duplicate-charge example produces one fake USD 49.00 refund and one email captured at http://localhost:8025; how-to/general refund-review replies produce no automatic refund, and rejection produces neither effect.
+Open **Runs → New ticket** as an admin or approver. Load the duplicate-charge example, start it, and inspect classify → retrieve_policy → draft_reply → risk_check → approval → issue_refund → send_email → close_ticket. By default every ticket pauses before its effects; Step 11 policies can auto-approve low-risk replies or require two distinct reviewers. Refunds always need human approval. Approve the original, edit the reply, or reject with a reason. An approved duplicate-charge example produces one fake USD 49.00 refund and one email captured at http://localhost:8025; how-to/general refund-review replies produce no automatic refund, and rejection produces neither effect.
 
 `pnpm seed` upserts three synthetic ticket examples. New collections tickets, ticketExamples, fakeRefunds and fakeEmails retain verifiable state/effects. Inputs accept only .test recipients and local Mailpit SMTP; the worker never contacts a bank or real customer mailbox. MockLLM/local policies need no model key. Optional SUPPORT_LLM_PROVIDER=gemini or ollama enables configured adapters; tests always use mocks. Support node outputs, citations, proposed refund, approved reply and effect receipts appear on run detail and in the Approval Inbox.
 
@@ -180,6 +180,12 @@ pnpm chaos --runs 50 --seed 20261116 --report-dir docs/chaos-ci
 ```
 
 See [STEP-10.md](docs/STEP-10.md) for fault rates, options, invariants, cleanup and recovery definitions, and [CHAOS-REPORT.json](docs/CHAOS-REPORT.json) for per-run outcomes/event timestamps. Worker/API recovery percentiles are separate and reflect local test settings, not production SLAs. The seed reproduces the fault schedule, not execution timing. A correction is a separate intended email; SMTP capture deduplication depends on configured Mailpit storage. The workload uses one worker and duplicate redelivery; existing integration tests separately cover concurrent effect races. CI runs 50 tickets with a zero-violation gate and preserves the generated report as an artifact.
+
+## Approval policies and analytics (Step 11)
+
+Admins open **Policies** to edit ordered JSON rules, dry-run them against saved support decisions, activate immutable versions and inspect version history. Rules use risk, proposed refund amount, classifier confidence, synthetic customer tier and the run's creation hour in UTC. Outcomes are automatic approval, one reviewer or two distinct reviewers; refunds/high risk cannot bypass human review. The saved decision/trace appears on run detail and in the inbox. Existing waits retain their policy version, and two-reviewer edits are frozen after the first vote.
+
+**Analytics** shows human-required decisions/all evaluated decisions, median request-to-final-approval time, final edited approvals/all resolved approvals, rejection reasons and daily auto-approved share. Feedback includes original/edited drafts, reviewer and reason; it never trains a model. Demo/legacy runs without policy decisions are excluded. Defaults preserve existing single-review behavior. See [STEP-11.md](docs/STEP-11.md) for the four main manual tests, second-reviewer setup, formulas and API/storage details. No new environment variables or dependencies.
 
 ## Human approval gates (Step 5)
 

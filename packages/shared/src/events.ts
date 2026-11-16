@@ -74,6 +74,8 @@ export const runEventSchema = z.discriminatedUnion('type', [
       'chaos.triggered',
       'chaos.api_recovered',
       'compensation.resumed',
+      'policy.evaluated',
+      'approval.reviewed',
     ]),
     value: z.record(z.string(), z.unknown()),
   }),

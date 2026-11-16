@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { policyDecisionSchema } from './approval-policy';
 export const supportWorkflowId = 'support-ticket-router';
 export const supportNodeSchema = z.enum([
   'classify',
@@ -25,6 +26,7 @@ export const ticketInputSchema = z.strictObject({
   orderId: z.string().trim().min(1).max(80),
   amountCents: z.number().int().min(0).max(100000),
   currency: z.literal('USD').default('USD'),
+  customerTier: z.enum(['standard', 'vip']).optional(),
 });
 export type TicketInput = z.infer<typeof ticketInputSchema>;
 export const ticketExampleSchema = ticketInputSchema.extend({ id: z.string() });
@@ -96,6 +98,7 @@ export const supportStateSchema = z.object({
   approvalAction: z
     .enum(['pending', 'approve', 'edit', 'reject'])
     .default('pending'),
+  policyDecision: policyDecisionSchema.nullable().default(null),
   approvedMessage: z.string().default(''),
   refund: refundResultSchema.default({
     id: '',
@@ -182,7 +185,7 @@ export const localPolicies: SupportPolicy[] = [
   },
   {
     id: 'account-help',
-    text: 'Invoices can be downloaded from Account > Billing > Invoices. Never request passwords or payment credentials. A human reviews the reply before sending.',
+    text: 'Invoices can be downloaded from Account > Billing > Invoices. Never request passwords or payment credentials. The configured approval policy controls review before sending.',
     allowRefund: false,
     maxRefundCents: 0,
   },

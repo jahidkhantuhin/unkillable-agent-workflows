@@ -5,7 +5,11 @@ export const noticePayloadSchema = z.strictObject({
 });
 export const approvalDecisionSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('approve') }),
-  z.strictObject({ action: z.literal('edit'), payload: noticePayloadSchema }),
+  z.strictObject({
+    action: z.literal('edit'),
+    payload: noticePayloadSchema,
+    reason: z.string().trim().min(1).max(1000).optional(),
+  }),
   z.strictObject({
     action: z.literal('reject'),
     reason: z.string().trim().min(1).max(1000),
@@ -18,6 +22,17 @@ export const resolveApprovalSchema = z
   })
   .strict();
 export const approvalDTOSchema = approvalSchema.extend({
+  reviews: z
+    .array(
+      z.object({
+        actorId: z.string(),
+        action: z.enum(['approve', 'edit', 'reject']),
+        message: z.string().optional(),
+        reason: z.string().optional(),
+        at: z.iso.datetime(),
+      }),
+    )
+    .default([]),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   resolvedAt: z.iso.datetime().optional(),

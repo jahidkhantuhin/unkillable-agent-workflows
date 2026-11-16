@@ -1,5 +1,7 @@
 # Step 6: Support ticket router
 
+Step 11 adds configurable approval policies: the default still pauses every ticket, but admins can allow low-risk replies automatically or require two distinct reviewers. Refunds always need a human. See [STEP-11.md](STEP-11.md) for current behavior and tests; the walkthroughs below assume the conservative default policy.
+
 The support workflow runs **classify → retrieve_policy → draft_reply → risk_check → approval → issue_refund → send_email → close_ticket**. Rejection ends at approval without refunding or sending. Existing durability demos remain available.
 
 Default execution uses deterministic MockLLM, local policies, a fake MongoDB refund ledger, and SMTP captured by local Mailpit. No bank, payment provider, or real customer mailbox is contacted. Gemini and local Ollama are optional provider adapters; tests never invoke live models or spend quota.

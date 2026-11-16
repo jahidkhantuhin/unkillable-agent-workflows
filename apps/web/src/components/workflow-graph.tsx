@@ -98,6 +98,9 @@ export function WorkflowGraph({
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<string>('');
   const [now, setNow] = useState(Date.now());
+  const [measurements, setMeasurements] = useState<
+    Record<string, { width: number; height: number }>
+  >({});
   useEffect(() => {
     const controller = new AbortController();
     void fetch(`/api/backend/runs/${run.id}/graph`, {
@@ -125,6 +128,7 @@ export function WorkflowGraph({
   const nodes: GraphNode[] = views.map((view, index) => ({
     id: view.id,
     type: 'workflow',
+    measured: measurements[view.id],
     position: {
       x:
         view.kind === 'compensation'
@@ -202,6 +206,27 @@ export function WorkflowGraph({
             <ReactFlow
               colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
               nodes={nodes}
+              onNodesChange={(changes) => {
+                const dimensions = changes.filter(
+                  (change) => change.type === 'dimensions',
+                );
+                if (!dimensions.length) return;
+                setMeasurements((previous) => {
+                  let next = previous;
+                  for (const change of dimensions) {
+                    if (!change.dimensions) continue;
+                    const old = previous[change.id];
+                    if (
+                      old?.width === change.dimensions.width &&
+                      old?.height === change.dimensions.height
+                    )
+                      continue;
+                    if (next === previous) next = { ...previous };
+                    next[change.id] = change.dimensions;
+                  }
+                  return next;
+                });
+              }}
               edges={edges}
               nodeTypes={nodeTypes}
               nodesDraggable={false}

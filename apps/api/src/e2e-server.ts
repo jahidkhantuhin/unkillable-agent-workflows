@@ -7,6 +7,7 @@ import { createServer as httpServer } from 'node:http';
 import { MongoClient } from 'mongodb';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
+import { setTimeout as delay } from 'node:timers/promises';
 const root = process.cwd();
 if (!process.env.MONGODB_URI || !process.env.REDIS_URL)
   throw new Error(
@@ -148,6 +149,25 @@ try {
   });
   child([resolve(root, 'scripts/supervise.mjs'), 'api'], root, false, true);
   child([resolve(root, 'scripts/supervise.mjs'), 'worker'], root, false, true);
+  // A ready web server alone does not mean its API dependency can accept login.
+  const readyUntil = Date.now() + 30000;
+  let apiReady = false;
+  while (Date.now() < readyUntil) {
+    try {
+      const response = await fetch('http://127.0.0.1:4100/health', {
+        signal: AbortSignal.timeout(1000),
+      });
+      if (response.ok) {
+        apiReady = true;
+        break;
+      }
+    } catch {
+      /* The owned API is still starting. */
+    }
+    await delay(50);
+  }
+  if (!apiReady)
+    throw new Error('E2E API did not become healthy before web startup');
   const require = createRequire(resolve(root, 'apps/web/package.json'));
   child(
     [

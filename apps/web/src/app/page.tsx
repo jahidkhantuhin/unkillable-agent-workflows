@@ -6,7 +6,7 @@ export default function Home() {
     <>
       <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
         <span className="size-1.5 rounded-full bg-emerald-500" />
-        STEP 09 / CHAOS CONTROL PANEL
+        STEP 11 / APPROVAL POLICIES AND ANALYTICS
       </div>
       <h1 className="max-w-3xl text-5xl font-semibold leading-[1.08] tracking-tight md:text-7xl">
         Agents that act.

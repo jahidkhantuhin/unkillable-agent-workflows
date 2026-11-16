@@ -70,6 +70,18 @@ export const approvalSchema = z.object({
   status: z.enum(['pending', 'approved', 'edited', 'rejected']),
   proposedAction: payloadSchema,
   reasoning: z.string(),
+  requiredApprovals: z.number().int().min(1).max(2).default(1),
+  reviews: z
+    .array(
+      z.object({
+        actorId: idSchema,
+        action: z.enum(['approve', 'edit', 'reject']),
+        message: z.string().optional(),
+        reason: z.string().optional(),
+        at: z.date(),
+      }),
+    )
+    .default([]),
   resolvedBy: idSchema.optional(),
   resolvedAt: z.date().optional(),
   decision: z
@@ -160,6 +172,7 @@ export const permissionSchema = z.enum([
   'approvals:resolve',
   'chaos:manage',
   'analytics:read',
+  'policies:manage',
   'deadletters:read',
   'deadletters:manage',
 ]);
@@ -184,5 +197,6 @@ export const sectionPermissions = {
   approvals: 'approvals:read',
   chaos: 'chaos:manage',
   analytics: 'analytics:read',
+  policies: 'policies:manage',
   'dead-letters': 'deadletters:read',
 } as const satisfies Record<string, Permission>;

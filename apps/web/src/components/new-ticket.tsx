@@ -18,6 +18,7 @@ function inputFrom(example: TicketInput): TicketInput {
     orderId: example.orderId,
     amountCents: example.amountCents,
     currency: 'USD',
+    customerTier: example.customerTier ?? 'standard',
   };
 }
 export function NewTicket() {
@@ -82,7 +83,8 @@ export function NewTicket() {
       <h1 className="mt-3 text-4xl font-semibold">New ticket</h1>
       <p className="mt-3 max-w-3xl text-sm text-muted-foreground">
         Synthetic tickets only. Refunds use a fake ledger; replies go to local
-        Mailpit. Every ticket pauses for human approval before either action.
+        Mailpit. The active approval policy chooses automatic replies, one
+        review, or two reviews. Refunds always require human approval.
       </p>
       <label className="mt-8 block text-sm">
         Load an example
@@ -107,6 +109,22 @@ export function NewTicket() {
         onSubmit={submit}
         className="mt-6 space-y-5 rounded-2xl border border-border p-6"
       >
+        <label className="block text-sm">
+          Synthetic customer tier
+          <select
+            className={field}
+            value={ticket.customerTier ?? 'standard'}
+            onChange={(event) =>
+              setTicket({
+                ...ticket,
+                customerTier: event.target.value as 'standard' | 'vip',
+              })
+            }
+          >
+            <option value="standard">Standard</option>
+            <option value="vip">VIP</option>
+          </select>
+        </label>
         <label className="block text-sm">
           Ticket title
           <input
