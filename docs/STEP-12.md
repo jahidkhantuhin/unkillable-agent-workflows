@@ -4,6 +4,8 @@ The second workflow moderates synthetic UTF-8 text. An administrator submits tex
 
 ## Main tests, with expected results
 
+Successful submissions clear the title, inline text and selected file and retain the new run link. Failed uploads keep your draft and file selection so you can retry. A later queue-refresh error does not restore content that was already submitted.
+
 Use SUPPORT_LLM_PROVIDER=mock for predictable examples. Start local Docker services, restart pnpm dev after this update, sign in as admin, and open **Moderation**. CHAOS_ENABLED can stay false for these tests.
 
 | Test            | What to do                                                              | Expected result                                                                                             |

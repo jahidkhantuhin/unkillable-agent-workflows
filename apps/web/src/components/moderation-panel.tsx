@@ -74,6 +74,9 @@ export function ModerationPanel() {
       const body = await r.json();
       if (!r.ok) throw new Error(body.error?.message ?? 'Upload failed');
       setCreated(runDTOSchema.parse(body).id);
+      setTitle('');
+      setText('');
+      clearFile();
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed');
@@ -103,7 +106,7 @@ export function ModerationPanel() {
       </div>
       <form
         onSubmit={submit}
-        className="mt-7 space-y-4 rounded-2xl border border-border p-6"
+        className="mt-7 space-y-4 rounded-2xl border border-border p-6 [&_button:enabled]:cursor-pointer"
       >
         <h2 className="text-lg font-semibold">Submit content</h2>
         <div className="flex flex-wrap gap-2">

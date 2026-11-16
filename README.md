@@ -187,6 +187,8 @@ See [STEP-10.md](docs/STEP-10.md) for fault rates, options, invariants, cleanup 
 
 ## Async content moderation (Step 12)
 
+After a successful moderation submission, the title, text and file selection clear; the run link remains available. Failed uploads preserve the draft for retry.
+
 As admin, open **Moderation** and submit a Safe, Review or Blocked example. Safe content publishes automatically to a local MongoDB record; review content pauses in the shared Approval Inbox; blocked content is rejected. Approve publication or reject with a reason after downloading the immutable original. A rejected item can have a succeeded workflow: the moderation process completed correctly. The existing graph marks unchosen branches skipped and resumes after reload/restart.
 
 UTF-8 uploads stream to ignored .local/moderation files (up to 10 MiB); checkpoints store references, hashes and bounded previews rather than full files. API/worker must share the local disk. The configured support model settings also select moderation's injected LLM; tests force deterministic mocks. Rules scan the full file; large/uncertain content requires admin review. The queue shows backlog, waiting reviews and current published/rejected decisions in the last 24 hours. No external platform posts or customer emails are sent; notices use the existing transactional outbox/local sink.
