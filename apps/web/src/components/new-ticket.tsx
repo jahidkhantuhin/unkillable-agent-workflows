@@ -10,19 +10,20 @@ import {
   type TicketInput,
 } from '@unkillable/shared';
 import { Button } from './ui/button';
-function inputFrom(example: TicketInput): TicketInput {
+type TicketDraft = Omit<TicketInput, 'amountCents'> & { amountCents: string };
+function inputFrom(example: TicketInput): TicketDraft {
   return {
     title: example.title,
     description: example.description,
     customerEmail: example.customerEmail,
     orderId: example.orderId,
-    amountCents: example.amountCents,
+    amountCents: String(example.amountCents),
     currency: 'USD',
     customerTier: example.customerTier ?? 'standard',
   };
 }
 export function NewTicket() {
-  const [ticket, setTicket] = useState<TicketInput>(() =>
+  const [ticket, setTicket] = useState<TicketDraft>(() =>
     inputFrom(supportExamples[0]),
   );
   const [examples, setExamples] = useState<
@@ -52,7 +53,11 @@ export function NewTicket() {
     setBusy(true);
     setError('');
     try {
-      const input = ticketInputSchema.parse(ticket);
+      if (!ticket.amountCents.trim()) throw new Error('Enter a charge amount.');
+      const input = ticketInputSchema.parse({
+        ...ticket,
+        amountCents: Number(ticket.amountCents),
+      });
       const response = await fetch('/api/backend/tickets', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -187,7 +192,7 @@ export function NewTicket() {
               onChange={(event) =>
                 setTicket({
                   ...ticket,
-                  amountCents: Number(event.target.value),
+                  amountCents: event.target.value,
                 })
               }
               className={field}

@@ -183,6 +183,8 @@ See [STEP-10.md](docs/STEP-10.md) for fault rates, options, invariants, cleanup 
 
 ## Approval policies and analytics (Step 11)
 
+The new-ticket charge amount can be cleared while editing. Enter a whole-number amount in cents before submitting; an explicit 0 is valid, and a blank field is required rather than silently converted to zero.
+
 Admins open **Policies** to edit ordered JSON rules, dry-run them against saved support decisions, activate immutable versions and inspect version history. Rules use risk, proposed refund amount, classifier confidence, synthetic customer tier and the run's creation hour in UTC. Outcomes are automatic approval, one reviewer or two distinct reviewers; refunds/high risk cannot bypass human review. The saved decision/trace appears on run detail and in the inbox. Existing waits retain their policy version, and two-reviewer edits are frozen after the first vote.
 
 **Analytics** shows human-required decisions/all evaluated decisions, median request-to-final-approval time, final edited approvals/all resolved approvals, rejection reasons and daily auto-approved share. Feedback includes original/edited drafts, reviewer and reason; it never trains a model. Demo/legacy runs without policy decisions are excluded. Defaults preserve existing single-review behavior. See [STEP-11.md](docs/STEP-11.md) for the four main manual tests, second-reviewer setup, formulas and API/storage details. No new environment variables or dependencies.

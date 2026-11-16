@@ -302,3 +302,5 @@ Final verification performed locally:
 - Read-only cleanup checks found zero chaos/browser-test databases, zero queue/control keys for the new smoke and browser runs, and no listeners on 3100/4100/4101. One pre-existing support-test database with records from before this step and no policy decisions was left unchanged. Synthetic Mailpit captures remain intentionally available.
 
 No new environment variables or dependencies; no .env changes, real model calls, customer effects, Git commands, commits, tags or pushes. Step 11 is complete; awaiting review and explicit continuation before Step 12.
+
+Step 11 form follow-up: fixed the charge amount input immediately restoring 0 when cleared because Number('') equals zero. The form now retains the editable string and converts to integer cents only on submission through the existing shared schema. Empty input is explicitly rejected, explicit 0 remains valid, and loading an example resets the displayed amount. Targeted ESLint, Prettier and web TypeScript checks passed. No automated browser run was performed for this small input fix. No Git commands, new dependencies or environment changes; Step 12 remains unstarted.
