@@ -1,4 +1,5 @@
 import type { Redis } from 'ioredis';
+import { randomUUID } from 'node:crypto';
 import {
   chaosEnabled,
   chaosPrefix,
@@ -8,6 +9,7 @@ import {
   injectFaultSchema,
   clearFaultSchema,
   killProcessSchema,
+  toggleChaosSchema,
   supportNodeSchema,
   demoNodeSchema,
   compensationNodeSchema,
@@ -36,9 +38,75 @@ export class ChaosService {
         'Chaos requires development mode and CHAOS_ENABLED=true',
       );
   }
+  async active() {
+    return (
+      this.enabled && (await this.redis.get(`${this.prefix}:paused`)) !== '1'
+    );
+  }
+  private async writeActive(key: string, value: string, ttl: number) {
+    const written = await this.redis.eval(
+      "if redis.call('GET', KEYS[1]) == '1' then return 0 end redis.call('SET', KEYS[2], ARGV[1], 'EX', ARGV[2]); return 1",
+      2,
+      `${this.prefix}:paused`,
+      key,
+      value,
+      String(ttl),
+    );
+    if (!written)
+      throw new HttpError(
+        409,
+        'CHAOS_PAUSED',
+        'Fault injection is paused. Enable it from the Chaos page first.',
+      );
+  }
+  async toggle(input: unknown) {
+    this.assertEnabled();
+    const { active } = toggleChaosSchema.parse(input);
+    const lock = `${this.prefix}:toggle-lock`,
+      token = randomUUID();
+    if (!(await this.redis.set(lock, token, 'EX', 120, 'NX')))
+      throw new HttpError(
+        409,
+        'CHAOS_BUSY',
+        'Another administrator is updating fault injection. Try again.',
+      );
+    try {
+      if (!active || (await this.redis.get(`${this.prefix}:paused`)) === '1') {
+        // Pause first: workers/API reject new fault claims while cleanup runs.
+        await this.redis.set(`${this.prefix}:paused`, '1');
+        await this.redis.del(`${this.prefix}:llm`);
+        const kills = await this.redis.keys(`${this.prefix}:kill:*`);
+        if (kills.length) await this.redis.del(...kills);
+        const owned = new Set(await this.runs.chaosRunIds());
+        let cursor = '0';
+        do {
+          const [next, keys] = await this.redis.scan(
+            cursor,
+            'MATCH',
+            'unkillable:fault:*',
+            'COUNT',
+            200,
+          );
+          cursor = next;
+          const pending = keys.filter((key) => owned.has(key.split(':')[2]));
+          if (pending.length) await this.redis.del(...pending);
+        } while (cursor !== '0');
+      }
+      if (active) await this.redis.del(`${this.prefix}:paused`);
+      return this.status();
+    } finally {
+      await this.redis.eval(
+        "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
+        1,
+        lock,
+        token,
+      );
+    }
+  }
   async status(): Promise<ChaosStatus> {
     const result = {
       enabled: this.enabled,
+      active: await this.active(),
       api: { state: 'down' },
       worker: { state: 'down' },
       llm: { mode: 'off' },
@@ -79,12 +147,10 @@ export class ChaosService {
         'PROCESS_UNAVAILABLE',
         'Start this process through the chaos supervisor first',
       );
-    await this.redis.set(
+    await this.writeActive(
       `${this.prefix}:kill:${target}:${status.instance}`,
       JSON.stringify({ actorId }),
-      'EX',
       5,
-      'NX',
     );
     return { accepted: true, target };
   }
@@ -114,10 +180,10 @@ export class ChaosService {
   async inject(input: unknown, actorId: string) {
     const value = await this.target(input);
     const parsed = injectFaultSchema.parse(value);
-    await this.redis.setex(
+    await this.writeActive(
       `unkillable:fault:${value.runId}:${value.node}:${value.phase}`,
-      300,
       JSON.stringify(parsed.fault),
+      300,
     );
     await this.runs.append(value.runId, {
       type: 'CUSTOM',
@@ -143,7 +209,7 @@ export class ChaosService {
     const value = llmFaultSchema.parse(input);
     if (value.mode === 'off') await this.redis.del(`${this.prefix}:llm`);
     else
-      await this.redis.setex(`${this.prefix}:llm`, 300, JSON.stringify(value));
+      await this.writeActive(`${this.prefix}:llm`, JSON.stringify(value), 300);
     return { accepted: true, expiresInSeconds: value.mode === 'off' ? 0 : 300 };
   }
 }

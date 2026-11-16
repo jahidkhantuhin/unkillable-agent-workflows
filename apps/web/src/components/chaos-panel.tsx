@@ -11,7 +11,7 @@ import {
 } from '@unkillable/shared';
 import { useAuth } from './auth-provider';
 const button =
-  'rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-3 text-sm font-semibold disabled:opacity-40';
+  'cursor-pointer rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40';
 export function ChaosBanner() {
   const { identity } = useAuth();
   const [enabled, setEnabled] = useState(false);
@@ -30,16 +30,19 @@ export function ChaosBanner() {
         .then(async (r) => {
           if (r.ok) {
             const data = await r.json();
-            if (!disposed) setEnabled(data.enabled === true);
+            if (!disposed)
+              setEnabled(data.enabled === true && data.active === true);
           }
         })
         .catch(() => {});
     refresh();
+    window.addEventListener('chaos-mode-changed', refresh);
     const timer = setInterval(refresh, 3000);
     return () => {
       disposed = true;
       controller.abort();
       clearInterval(timer);
+      window.removeEventListener('chaos-mode-changed', refresh);
     };
   }, [identity?.user.id]);
   return enabled ? (
@@ -122,10 +125,18 @@ export function ChaosPanel({ run }: { run?: RunDTO }) {
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error?.message ?? 'Action refused');
+      if (path === 'toggle') {
+        setStatus(chaosStatusSchema.parse(data));
+        window.dispatchEvent(new Event('chaos-mode-changed'));
+      }
       setNotice(
-        path === 'kill'
-          ? 'Crash requested. Watch the process status recover.'
-          : 'Control saved. Temporary settings expire after five minutes.',
+        path === 'toggle'
+          ? data.active
+            ? 'Fault injection is active.'
+            : 'Fault injection paused. Pending faults cleared and model simulation reset. Recovery of already-triggered actions continues.'
+          : path === 'kill'
+            ? 'Crash requested. Watch the process status recover.'
+            : 'Control saved. Temporary settings expire after five minutes.',
       );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Request failed');
@@ -138,7 +149,7 @@ export function ChaosPanel({ run }: { run?: RunDTO }) {
     chosen?.workflowId === 'durability-demo'
       ? demoNodeSchema.options
       : [...supportNodeSchema.options, ...compensationNodeSchema.options];
-  const disabled = busy || !status?.enabled;
+  const disabled = busy || !status?.enabled || !status?.active || !!error;
   return (
     <section
       className="mt-8 rounded-2xl border border-red-500/30 p-6"
@@ -151,6 +162,60 @@ export function ChaosPanel({ run }: { run?: RunDTO }) {
         Admin-only development controls. Crashes are abrupt; supervised
         processes restart automatically. No Docker socket is used.
       </p>
+      {!run && (
+        <div
+          className={`mt-6 flex flex-wrap items-center justify-between gap-5 rounded-2xl border p-5 ${status?.active && status.enabled ? 'border-red-500/40 bg-red-500/10' : 'border-border bg-muted/40'}`}
+        >
+          <div className="max-w-xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="font-semibold">Fault injection</h3>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${status?.enabled && status.active ? 'bg-red-500/15 text-red-600 dark:text-red-300' : 'bg-muted text-muted-foreground'}`}
+              >
+                {!status
+                  ? 'Checking'
+                  : !status.enabled
+                    ? 'Unavailable'
+                    : status.active
+                      ? 'Active'
+                      : 'Paused'}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {!status?.enabled
+                ? 'The environment flag must allow development chaos before this switch can be used.'
+                : status.active
+                  ? 'Crash controls and fault simulations are available. Pause to clear pending faults and reset model simulation.'
+                  : 'New faults are blocked. Supervision and recovery keep running. Enable when you are ready to test.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Enable fault injection"
+            aria-checked={!!status?.enabled && !!status.active}
+            disabled={busy || !status?.enabled || !!error}
+            onClick={() => void mutate('toggle', { active: !status?.active })}
+            className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <span>Enable fault injection</span>
+            <span
+              aria-hidden="true"
+              className={`flex h-7 w-12 items-center rounded-full p-1 transition-colors ${status?.enabled && status.active ? 'bg-red-500' : 'bg-muted-foreground/40'}`}
+            >
+              <span
+                className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${status?.enabled && status.active ? 'translate-x-5' : ''}`}
+              />
+            </span>
+          </button>
+        </div>
+      )}
+      {run && status?.enabled && !status.active && (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Fault injection is paused. Enable it on the Chaos page to use these
+          controls.
+        </p>
+      )}
       {!status?.enabled && (
         <p className="mt-3 text-sm">
           Controls disabled. Set CHAOS_ENABLED=true in the root .env and restart

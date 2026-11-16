@@ -6,6 +6,7 @@ import {
   injectFaultSchema,
   clearFaultSchema,
   llmFaultSchema,
+  toggleChaosSchema,
 } from '@unkillable/shared';
 import type { AuthService } from '../services/auth';
 import type { ChaosService } from '../services/chaos';
@@ -15,9 +16,9 @@ export function chaosRoutes(
   origins: string[],
 ) {
   const router = Router();
-  router.get('/mode', requireAuth(auth), (_req, res) => {
+  router.get('/mode', requireAuth(auth), async (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ enabled: service.enabled });
+    res.json({ enabled: service.enabled, active: await service.active() });
   });
   router.use(requireAuth(auth, 'chaos:manage'));
   router.get('/status', async (_req, res) => {
@@ -25,6 +26,9 @@ export function chaosRoutes(
     res.json(await service.status());
   });
   router.use(trustedOrigin(origins));
+  router.post('/toggle', validate(toggleChaosSchema), async (_req, res) => {
+    res.json(await service.toggle(res.locals.body));
+  });
   router.post('/kill', validate(killProcessSchema), async (_req, res) => {
     res
       .status(202)

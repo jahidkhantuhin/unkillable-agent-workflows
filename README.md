@@ -160,6 +160,10 @@ CHAOS_ENABLED=false is the default. In development, per-run/node Redis flags sup
 
 ## Chaos control panel (Step 9)
 
+Enabled Chaos buttons show a pointer cursor on hover; disabled controls show a not-allowed cursor.
+
+The admin **Enable fault injection** switch shows Active / Paused / Unavailable. Pausing blocks new crashes/faults/model simulations at the server and worker, clears pending faults for runs in this application database and queued kill requests, resets the model profile and hides the red banner. Recovery/supervision continue. The queue's paused state persists in Redis across app restarts; resuming does not restore old faults. The switch cannot override CHAOS_ENABLED=false or production mode. With development chaos allowed and no saved pause, existing behavior starts Active. Restart pnpm dev once after installing this API/worker update.
+
 For a local demonstration, set CHAOS_ENABLED=true and NODE_ENV=development in your existing .env, then restart pnpm dev. The launcher uses API/worker supervisors in this mode, and shows a red warning banner for signed-in users. As admin, open Chaos to crash either process, inspect up/down/restarting status and restart counts, or apply temporary slow/flaky model simulation. Run detail also offers node/phase-specific faults, including crash worker at this node. Mutations require admin permission, a trusted Origin and enabled development mode; disabled/production actions are refused. Supervisors themselves refuse disabled/production startup.
 
 Supervisors spawn only this repository's child process, consume generation-specific Redis kill commands in that child, and restart it after CHAOS_RESTART_DELAY_MS (default 1000). No Docker socket, arbitrary PID or shell execution endpoint is exposed. Normal mode retains tsx watch. Chaos mode supervises direct app processes; restart pnpm dev after API/worker source edits. Ctrl+C/pnpm dev:stop still stop the managed group. After a forced supervisor stop on Windows, startup may wait up to ten seconds for its old Redis lease to expire; an existing live supervisor cannot be displaced.

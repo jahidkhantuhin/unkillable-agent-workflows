@@ -3,6 +3,7 @@ import { chaosPrefix } from '@unkillable/shared';
 interface RedisControl {
   setex(key: string, seconds: number, value: string): Promise<unknown>;
   getdel(key: string): Promise<string | null>;
+  eval(script: string, numKeys: number, ...args: string[]): Promise<unknown>;
   del(key: string): Promise<unknown>;
 }
 /** Only the current process can consume its generation-specific kill request. */
@@ -24,7 +25,15 @@ export function startChaosRuntime(
     busy = true;
     try {
       await redis.setex(key, 4, JSON.stringify({ state: 'up', instance }));
-      if (await redis.getdel(`${prefix}:kill:${service}:${instance}`)) crash();
+      if (
+        await redis.eval(
+          "if redis.call('GET', KEYS[1]) == '1' then return false end return redis.call('GETDEL', KEYS[2])",
+          2,
+          `${prefix}:paused`,
+          `${prefix}:kill:${service}:${instance}`,
+        )
+      )
+        crash();
     } finally {
       busy = false;
     }

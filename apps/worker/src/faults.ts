@@ -47,6 +47,8 @@ export class RedisFaultInjector implements FaultInjector {
   ) {}
   async at(runId: string, node: string, phase: FaultPhase) {
     if (!this.enabled) return;
+    if ((await this.redis.get(`${chaosPrefix(this.queue)}:paused`)) === '1')
+      return;
     const key = faultKey(runId, node, phase);
     const raw = await this.redis.get(key);
     if (!raw) {

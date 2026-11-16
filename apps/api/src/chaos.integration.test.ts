@@ -276,6 +276,76 @@ describe.skipIf(!uri || !redisUrl)(
       expect((await chaos.status()).llm.mode).toBe('flaky');
       expect((await post('llm', { mode: 'off' })).status).toBe(200);
     });
+    it('pauses across API instances, clears only owned pending faults, and resumes without restoring simulations', async () => {
+      const run = await runs.create(userId, {
+        message: 'Pause fault controls',
+      });
+      await runs.markDispatched(run.id);
+      const value = {
+        runId: run.id,
+        node: 'complete',
+        phase: 'before',
+        fault: { mode: 'throw_always' },
+      };
+      expect((await post('fault', value)).status).toBe(202);
+      expect((await post('llm', { mode: 'slow', delayMs: 1000 })).status).toBe(
+        200,
+      );
+      const key = `unkillable:fault:${run.id}:complete:before`,
+        foreign = `unkillable:fault:${randomUUID()}:complete:before`,
+        kill = `${chaosPrefix(name)}:kill:worker:pending`;
+      flags.push(key, foreign);
+      await redis.setex(foreign, 300, '{"mode":"throw_once"}');
+      await redis.setex(kill, 5, '{}');
+      expect((await post('toggle', { active: false }, false)).status).toBe(403);
+      expect((await post('toggle', { active: 'false' })).status).toBe(400);
+      await members.setRole(userId, 'viewer');
+      expect((await post('toggle', { active: false })).status).toBe(403);
+      await members.setRole(userId, 'approver');
+      expect((await post('toggle', { active: false })).status).toBe(403);
+      await members.setRole(userId, 'admin');
+      const paused = await post('toggle', { active: false });
+      expect(paused.status).toBe(200);
+      expect(paused.body).toMatchObject({
+        enabled: true,
+        active: false,
+        llm: { mode: 'off' },
+      });
+      expect(await redis.get(key)).toBeNull();
+      expect(await redis.get(kill)).toBeNull();
+      expect(await redis.get(foreign)).not.toBeNull();
+      expect(
+        await new ChaosService(redis, runs, name, {
+          CHAOS_ENABLED: 'true',
+          NODE_ENV: 'development',
+        }).active(),
+      ).toBe(false);
+      expect((await post('fault', value)).body.error.code).toBe('CHAOS_PAUSED');
+      expect(
+        (await post('llm', { mode: 'flaky', rate: 1 })).body.error.code,
+      ).toBe('CHAOS_PAUSED');
+      expect((await post('kill', { target: 'worker' })).status).toBe(409);
+      const blocked = new ChaosService(redis, runs, name, {
+        CHAOS_ENABLED: 'false',
+        NODE_ENV: 'development',
+      });
+      await expect(blocked.toggle({ active: true })).rejects.toMatchObject({
+        code: 'CHAOS_DISABLED',
+      });
+      const production = new ChaosService(redis, runs, name, {
+        CHAOS_ENABLED: 'true',
+        NODE_ENV: 'production',
+      });
+      await expect(production.toggle({ active: true })).rejects.toMatchObject({
+        code: 'CHAOS_DISABLED',
+      });
+      const resumed = await post('toggle', { active: true });
+      expect(resumed.body).toMatchObject({
+        active: true,
+        llm: { mode: 'off' },
+      });
+      expect(await redis.get(key)).toBeNull();
+    });
     it('kills a worker through the API during an active node and automatically resumes its abandoned job', async () => {
       workerSupervisor = await supervisor('worker');
       const before = (await chaos.status()).worker.instance;

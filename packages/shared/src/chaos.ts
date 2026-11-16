@@ -43,6 +43,7 @@ export const llmFaultSchema = z.discriminatedUnion('mode', [
 export const killProcessSchema = z.strictObject({
   target: z.enum(['worker', 'api']),
 });
+export const toggleChaosSchema = z.strictObject({ active: z.boolean() });
 export const processStateSchema = z.object({
   state: z.enum(['up', 'down', 'starting', 'restarting']),
   instance: z.string().optional(),
@@ -50,6 +51,7 @@ export const processStateSchema = z.object({
 });
 export const chaosStatusSchema = z.object({
   enabled: z.boolean(),
+  active: z.boolean().default(true),
   api: processStateSchema,
   worker: processStateSchema,
   llm: llmFaultSchema,

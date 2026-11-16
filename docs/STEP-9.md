@@ -23,6 +23,22 @@ pnpm dev
 
 Sign in as admin and open Chaos. A red warning banner appears on signed-in pages whenever the API reports enabled mode. The panel polls API/worker supervision status and restart counts. If the API is down, the browser reports it unreachable and the worker status unknown until polling succeeds; it does not invent a worker heartbeat.
 
+## Enable or pause from the UI
+
+Once CHAOS_ENABLED=true is allowed in development and the app has been restarted, the admin Chaos page has an **Enable fault injection** switch:
+
+| Status      | Meaning                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Active      | Crash buttons, run faults and Slow/Flaky model simulations are available; red warning banner is visible                              |
+| Paused      | New injections are blocked, pending faults cleared, model profile reset and warning banner hidden; supervision and recovery continue |
+| Unavailable | CHAOS_ENABLED=false or production mode; the disabled switch cannot override this hard lock                                           |
+
+To test: set Slow LLM, turn the switch off, and check **Paused**, disabled crash/model buttons and **Current profile: off**. Refresh: it should still be Paused. Turn it on: controls and warning return, but the old simulation/faults do not return. Run-detail fault buttons honor the same state. The switch does not stop workflows, undo an effect, cancel a delay/error already claimed by a worker, or restart/stop supervision.
+
+The paused flag is queue-scoped in Redis and persists across app restarts until enabled or that Redis data is removed. Existing installations with development chaos allowed and no saved pause retain Active startup behavior. Pause cleanup removes run fault keys only for run IDs in this application's MongoDB database, preserving other isolated databases' faults; use a separate database/queue for independent app instances as the test harnesses do. It also removes this queue's pending kill requests and model profile. Resuming repeats cleanup before releasing a saved pause, so interrupted cleanup does not restore old settings. New API writes check the gate atomically; process kill claims check it atomically too. Already-claimed/in-flight fault work cannot be undone. Pause/resume changes are serialized with a short-lived Redis lock; failures leave the gate paused for a retry.
+
+POST /chaos/toggle accepts only `{ "active": true }` or `{ "active": false }`, requires an admin and trusted Origin, and refuses disabled/production operation. Status reports both environment permission (`enabled`) and runtime state (`active`); signed-in users receive only these mode flags from /chaos/mode. No new environment variables or dependencies. API/worker changes require one pnpm dev restart before using this follow-up.
+
 ## Three main manual tests
 
 These tests answer three simple questions. Use a new duplicate-charge ticket for each ticket test. All refunds are fake and all emails stay in local Mailpit.

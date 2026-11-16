@@ -22,7 +22,9 @@ async function forward(
   const isTicket = pathname === 'tickets' || pathname === 'tickets/examples';
   const isPolicy = pathname === 'policies' || pathname === 'policies/dry-run';
   const isAnalytics = pathname === 'analytics';
-  const isChaos = /^chaos\/(mode|status|kill|fault|clear|llm)$/.test(pathname);
+  const isChaos = /^chaos\/(mode|status|kill|fault|clear|llm|toggle)$/.test(
+    pathname,
+  );
   const isApproval =
     pathname === 'approvals' ||
     /^approvals\/[0-9a-f-]{36}(\/resolve)?$/.test(pathname);

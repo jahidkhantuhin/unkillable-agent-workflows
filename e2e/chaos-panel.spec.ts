@@ -19,6 +19,35 @@ test('admin sees chaos warning, model controls and supervised process recovery',
   await expect(
     panel.getByText('Current profile: slow', { exact: true }),
   ).toBeVisible();
+  const toggle = panel.getByRole('switch', { name: 'Enable fault injection' });
+  await expect(toggle).toBeChecked();
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
+  await expect(panel.getByText('Paused', { exact: true })).toBeVisible();
+  await expect(
+    panel.getByRole('button', { name: 'Crash worker now' }),
+  ).toBeDisabled();
+  await expect(
+    panel.getByRole('button', { name: 'Slow LLM', exact: true }),
+  ).toBeDisabled();
+  await expect(
+    panel.getByText('Current profile: off', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/CHAOS MODE ENABLED/)).toHaveCount(0);
+  await page.screenshot({
+    path: 'screenshots/chaos-toggle-paused.png',
+  });
+  await page.reload();
+  await expect(toggle).not.toBeChecked();
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  await expect(
+    panel.getByRole('button', { name: 'Slow LLM', exact: true }),
+  ).toBeEnabled();
+  await expect(page.getByText(/CHAOS MODE ENABLED/)).toBeVisible();
+  await page.screenshot({
+    path: 'screenshots/chaos-toggle-active.png',
+  });
   await panel.getByRole('button', { name: 'Reset LLM simulation' }).click();
   await expect(
     panel.getByText('Current profile: off', { exact: true }),

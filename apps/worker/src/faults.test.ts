@@ -26,6 +26,20 @@ function fixture(enabled = true) {
   };
 }
 describe('Redis fault controls', () => {
+  it('ignores pending node faults and model profiles while the queue is paused', async () => {
+    const f = fixture();
+    f.flags.set('unkillable:chaos:workflow-runs:paused', '1');
+    f.flags.set(faultKey('run', 'classify'), '{"mode":"crash_process"}');
+    f.flags.set(
+      'unkillable:chaos:workflow-runs:llm',
+      '{"mode":"flaky","rate":1}',
+    );
+    await f.injector.at('run', 'classify', 'before');
+    await f.injector.at('other', 'draft_reply', 'before');
+    expect(f.crash).not.toHaveBeenCalled();
+    expect(f.sleep).not.toHaveBeenCalled();
+    expect(f.redis.eval).not.toHaveBeenCalled();
+  });
   it('simulates slow and flaky model calls without invoking a provider', async () => {
     const f = fixture();
     const key = 'unkillable:chaos:workflow-runs:llm';

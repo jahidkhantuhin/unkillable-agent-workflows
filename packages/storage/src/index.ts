@@ -35,6 +35,9 @@ export interface RunStore {
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  async chaosRunIds() {
+    return this.runs.distinct('id') as Promise<string[]>;
+  }
   policies() {
     return new PolicyRepository(this.client, this.db);
   }
