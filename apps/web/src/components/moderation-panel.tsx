@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useRef, type FormEvent } from 'react';
 import Link from 'next/link';
+import { FileText, Upload } from 'lucide-react';
 import {
   moderationQueueSchema,
   maxContentBytes,
@@ -9,8 +10,30 @@ import {
 import { Button } from './ui/button';
 export function ModerationPanel() {
   const fileInput = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  function selectFiles(selected: FileList | File[]) {
+    if (busy || !selected.length) return;
+    if (selected.length !== 1) {
+      setError('Choose one text file at a time.');
+      return;
+    }
+    const candidate = selected[0];
+    if (!/\.(txt|md)$/i.test(candidate.name)) {
+      setError('Choose a .txt or .md file saved as UTF-8 text.');
+      return;
+    }
+    if (!candidate.size || candidate.size > maxContentBytes) {
+      setError('Provide a nonempty text file up to 10 MiB.');
+      return;
+    }
+    if (fileInput.current) fileInput.current.value = '';
+    setFile(candidate);
+    setError('');
+  }
   function clearFile() {
     setFile(null);
+    setError('');
     if (fileInput.current) fileInput.current.value = '';
   }
   const [data, setData] = useState<ReturnType<
@@ -148,6 +171,7 @@ export function ModerationPanel() {
         <label className="block text-sm">
           Text content
           <textarea
+            aria-label="Text content"
             rows={4}
             value={text}
             disabled={!!file}
@@ -155,29 +179,112 @@ export function ModerationPanel() {
             className="mt-2 w-full rounded-lg border border-border bg-background p-3"
           />
         </label>
-        <label className="block text-sm">
-          Or upload a UTF-8 text file
+        <section
+          aria-label="Text file upload"
+          data-testid="moderation-drop-zone"
+          data-dragging={dragging}
+          onDragEnter={(event) => {
+            if (!event.dataTransfer.types.includes('Files')) return;
+            event.preventDefault();
+            dragDepth.current++;
+            if (!busy) setDragging(true);
+          }}
+          onDragOver={(event) => {
+            if (!event.dataTransfer.types.includes('Files')) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = busy ? 'none' : 'copy';
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            dragDepth.current = Math.max(0, dragDepth.current - 1);
+            if (!dragDepth.current) setDragging(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            dragDepth.current = 0;
+            setDragging(false);
+            selectFiles(event.dataTransfer.files);
+          }}
+          className={`rounded-xl border-2 border-dashed p-5 transition-colors ${dragging ? 'border-emerald-500 bg-emerald-500/10 dark:border-emerald-400' : 'border-border bg-muted/30'}`}
+        >
           <input
             type="file"
             ref={fileInput}
+            aria-label="Or upload a UTF-8 text file"
+            tabIndex={-1}
+            disabled={busy}
             accept=".txt,.md,text/plain,text/markdown"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="mt-2 block w-full text-sm"
+            onChange={(event) => {
+              const selected = Array.from(event.target.files ?? []);
+              event.target.value = '';
+              selectFiles(selected);
+            }}
+            className="sr-only"
           />
-        </label>
-        {file && (
-          <p className="text-xs text-muted-foreground">
-            Selected: {file.name} ({file.size} bytes). This file is submitted
-            instead of the text above.{' '}
-            <button
+          <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left">
+            <div className="flex flex-col items-center gap-3 sm:flex-row">
+              <Upload
+                aria-hidden="true"
+                className="size-8 shrink-0 text-emerald-600 dark:text-emerald-400"
+              />
+              <div>
+                <h3 className="text-sm font-semibold">
+                  {dragging
+                    ? 'Drop your text file here'
+                    : 'Drag and drop a text file'}
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  UTF-8 .txt or .md · Up to 10 MiB · One file
+                </p>
+              </div>
+            </div>
+            <Button
               type="button"
-              className="cursor-pointer underline"
-              onClick={clearFile}
+              variant="outline"
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+              className="shrink-0 cursor-pointer border-emerald-500/60 bg-emerald-400 text-emerald-950 hover:bg-emerald-300 dark:border-emerald-300/60 dark:bg-emerald-400 dark:text-emerald-950 dark:hover:bg-emerald-300"
             >
-              Use text instead
-            </button>
-          </p>
-        )}
+              Choose file
+            </Button>
+          </div>
+          {file && (
+            <div
+              aria-live="polite"
+              className="mt-4 rounded-lg border border-border bg-background p-3"
+            >
+              <div className="flex items-start gap-2">
+                <FileText
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="break-all text-sm font-medium">{file.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {file.size >= 1048576
+                      ? `${(file.size / 1048576).toFixed(2)} MiB`
+                      : file.size >= 1024
+                        ? `${(file.size / 1024).toFixed(1)} KiB`
+                        : `${file.size} bytes`}{' '}
+                    · Selected for upload
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={clearFile}
+                  className="shrink-0 cursor-pointer text-xs font-medium underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Remove file
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                This file will be submitted instead of the text above.
+              </p>
+            </div>
+          )}
+        </section>
         <p className="text-xs text-muted-foreground">
           Files over 16000 characters always need review unless rejected.
           DEMO_REVIEW and DEMO_BLOCK are deterministic test markers. Automated

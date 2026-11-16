@@ -189,6 +189,8 @@ See [STEP-10.md](docs/STEP-10.md) for fault rates, options, invariants, cleanup 
 
 ## Async content moderation (Step 12)
 
+Drop one UTF-8 .txt/.md file into the highlighted upload area, or use the high-contrast Choose file button. Selected filename/size and Remove file controls are visible in both themes; invalid type/empty/oversized/multiple-file selections are refused before submission. Clickable upload controls use pointer cursors.
+
 After a successful moderation submission, the title, text and file selection clear; the run link remains available. Failed uploads preserve the draft for retry.
 
 As admin, open **Moderation** and submit a Safe, Review or Blocked example. Safe content publishes automatically to a local MongoDB record; review content pauses in the shared Approval Inbox; blocked content is rejected. Approve publication or reject with a reason after downloading the immutable original. A rejected item can have a succeeded workflow: the moderation process completed correctly. The existing graph marks unchosen branches skipped and resumes after reload/restart.

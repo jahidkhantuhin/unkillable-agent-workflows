@@ -4,6 +4,8 @@ The second workflow moderates synthetic UTF-8 text. An administrator submits tex
 
 ## Main tests, with expected results
 
+The text-file drop area highlights while a file is dragged over it. Drop one .txt/.md file or click **Choose file** (high contrast in light/dark themes). The selected filename/size appears with **Remove file**; inline text stays disabled while a file is selected. Removing the file restores the inline draft. Both selection paths reject empty files, files over 10 MiB, unsupported extensions and multiple files; invalid selections leave the previous draft/valid file unchanged. Server-side UTF-8 validation still applies. Upload begins only when Start moderation is clicked.
+
 Successful submissions clear the title, inline text and selected file and retain the new run link. Failed uploads keep your draft and file selection so you can retry. A later queue-refresh error does not restore content that was already submitted.
 
 Use SUPPORT_LLM_PROVIDER=mock for predictable examples. Start local Docker services, restart pnpm dev after this update, sign in as admin, and open **Moderation**. CHAOS_ENABLED can stay false for these tests.
