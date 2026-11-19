@@ -43,6 +43,12 @@ services:
       MP_DISABLE_VERSION_CHECK: 'true'
     volumes: ['mailpit-data:/data']
     ports: ['127.0.0.1:1025:1025', '127.0.0.1:8025:8025']
+  otel-collector:
+    image: otel/opentelemetry-collector:0.165.0
+    profiles: [observability]
+    command: ['--config=/etc/otelcol/config.yaml']
+    volumes: ['./otel-collector.yaml:/etc/otelcol/config.yaml:ro']
+    ports: ['127.0.0.1:4318:4318']
 volumes:
   mailpit-data:
   mongo-data:

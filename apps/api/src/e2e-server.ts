@@ -33,6 +33,11 @@ const env = {
   SUPPORT_LLM_PROVIDER: 'mock',
   TELEGRAM_ENABLED: 'false',
   WHATSAPP_ENABLED: 'false',
+  APPROVAL_SLA_ENABLED: 'true',
+  APPROVAL_SLA_POLICIES:
+    '{"durability-demo":{"remindMs":2000,"escalateMs":4000,"expireMs":600000}}',
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: '',
+  LLM_PRICING_JSON: '{}',
   WEB_PUBLIC_URL: 'http://127.0.0.1:3100',
   ORGMIND_RETRIEVER_ENABLED: 'false',
   CHAOS_ENABLED: 'false',
@@ -67,6 +72,14 @@ async function cleanup() {
     await queue.obliterate({ force: true });
   } finally {
     await queue.close();
+  }
+  const slaQueue = new Queue(`${name}-approval-sla`, {
+    connection: { url: env.REDIS_URL!, maxRetriesPerRequest: 1 },
+  });
+  try {
+    await slaQueue.obliterate({ force: true });
+  } finally {
+    await slaQueue.close();
   }
   const mongo = new MongoClient(uri.toString());
   await mongo.connect();

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { approvalSchema } from './domain';
+import { slaSchema } from './operations';
 export const noticePayloadSchema = z.strictObject({
   message: z.string().trim().min(1).max(500),
 });
@@ -22,6 +23,16 @@ export const resolveApprovalSchema = z
   })
   .strict();
 export const approvalDTOSchema = approvalSchema.extend({
+  sla: slaSchema
+    .extend({
+      remindAt: z.iso.datetime(),
+      escalateAt: z.iso.datetime(),
+      expireAt: z.iso.datetime(),
+      remindedAt: z.iso.datetime().optional(),
+      escalatedAt: z.iso.datetime().optional(),
+      expiredAt: z.iso.datetime().optional(),
+    })
+    .optional(),
   reviews: z
     .array(
       z.object({

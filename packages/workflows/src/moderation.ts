@@ -1,3 +1,4 @@
+import { recordModelUsage } from './observability';
 import {
   moderationCheckSchema,
   modelPreviewChars,
@@ -8,6 +9,10 @@ export interface ModerationLLM {
 }
 export class MockModerationLLM implements ModerationLLM {
   async check(text: string) {
+    await recordModelUsage('mock', 'deterministic', {
+      inputTokens: 0,
+      outputTokens: 0,
+    });
     return {
       verdict: text.includes('DEMO_BLOCK')
         ? 'reject'

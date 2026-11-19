@@ -9,6 +9,7 @@ import type {
 import {
   approvalSchema,
   approvalDecisionSchema,
+  approvalSla,
   noticePayloadSchema,
   StaleExecutionError,
   type ApprovalDecision,
@@ -75,6 +76,7 @@ export class ApprovalRepository {
           return;
         const now = new Date();
         const record = approvalSchema.parse({
+          sla: approvalSla(run.workflowId, now),
           title,
           id: randomUUID(),
           runId,
@@ -146,6 +148,12 @@ export class ApprovalRepository {
         )
           throw new ApprovalConflictError();
         const now = new Date();
+        if (
+          actorId !== 'system:sla' &&
+          record.sla &&
+          +now >= +record.sla.expireAt
+        )
+          throw new ApprovalConflictError();
         if (record.reviews.some((review) => review.actorId === actorId))
           throw new ApprovalConflictError();
         if (record.reviews.length && decision.action === 'edit')

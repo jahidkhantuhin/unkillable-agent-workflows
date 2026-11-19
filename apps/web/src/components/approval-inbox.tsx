@@ -1,4 +1,5 @@
 'use client';
+import { ApprovalSla } from './approval-sla';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -111,6 +112,7 @@ function ApprovalCard({
         </p>
       ))}
       <PolicyTrace value={approval.proposedAction.policyDecision} />
+      <ApprovalSla approval={approval} />
       <p className="mt-4 text-xs text-muted-foreground">
         {approval.proposedAction.kind === 'support-ticket'
           ? `Proposed action: fake refund USD ${(Number(approval.proposedAction.refundCents) / 100).toFixed(2)}; send reply to ${String(approval.proposedAction.recipient)} through local Mailpit. No real payment or customer email.`

@@ -1,3 +1,7 @@
+import {
+  observedRun,
+  observedApprovalWait,
+} from '@unkillable/workflows/observability';
 import { createDemoRuntime, Command } from '@unkillable/workflows/runtime';
 import { RunRepository } from '@unkillable/storage';
 import { retryOperation } from '@unkillable/workflows/retry';
@@ -289,6 +293,13 @@ export async function createExecutor(
     | undefined;
   async function execute(id: string, execution?: number) {
     const run = await repository.get(id);
+    const approvalWait = await repository.approvals().forRun(id);
+    if (approvalWait?.resolvedAt)
+      await observedApprovalWait(
+        approvalWait.id,
+        approvalWait.createdAt,
+        approvalWait.resolvedAt,
+      );
     if (run?.workflowId === 'content-moderation') {
       if (!moderationRuntime)
         moderationRuntime = import('./moderation-executor')
@@ -349,9 +360,12 @@ export async function createExecutor(
       const key = `${id}:${generation}`;
       const current = inFlight.get(key);
       if (current) return current;
-      const pending = execute(id, execution).finally(() =>
-        inFlight.delete(key),
-      );
+      const pending = observedRun(
+        id,
+        generation ?? 0,
+        repository.operations(),
+        () => execute(id, execution),
+      ).finally(() => inFlight.delete(key));
       inFlight.set(key, pending);
       return pending;
     },

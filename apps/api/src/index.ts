@@ -1,3 +1,5 @@
+import { startApprovalTimers } from './services/approval-timers';
+import { slaConfigSchema, observabilityConfigSchema } from '@unkillable/shared';
 import { MongoClient } from 'mongodb';
 import { Redis } from 'ioredis';
 import pino from 'pino';
@@ -21,6 +23,8 @@ import { closeRunStreams } from './controllers/runs';
 import { ChaosService } from './services/chaos';
 import { startChaosRuntime } from '@unkillable/storage';
 import { chaosEnabled } from '@unkillable/shared';
+slaConfigSchema.parse(process.env);
+observabilityConfigSchema.parse(process.env);
 const config = configSchema.parse(process.env);
 const logger = pino({ level: config.LOG_LEVEL });
 const mongo = new MongoClient(config.MONGODB_URI, {
@@ -60,6 +64,12 @@ const notifications = new NotificationService(
   memberships,
   new ApprovalSigner(config.BETTER_AUTH_SECRET),
   config,
+);
+const approvalTimers = startApprovalTimers(
+  runService.repository.operations(),
+  new Redis(config.REDIS_URL, { maxRetriesPerRequest: null }),
+  config.RUN_QUEUE_NAME,
+  () => logger.warn('Approval SLA processing deferred'),
 );
 const notificationTimer = setInterval(() => {
   void notifications
@@ -153,6 +163,7 @@ async function shutdown() {
     server.closeAllConnections();
     process.exit(1);
   }, 10000).unref();
+  await approvalTimers.close();
   server.close(async () => {
     await queue.close();
     await mongo.close();

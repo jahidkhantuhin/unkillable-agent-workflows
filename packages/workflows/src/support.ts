@@ -1,3 +1,4 @@
+import { recordModelUsage } from './observability';
 import {
   classificationSchema,
   draftReplySchema,
@@ -56,6 +57,10 @@ export type SupportDependencies = {
 };
 export class MockLLM implements LLM {
   async classify(ticket: TicketInput) {
+    await recordModelUsage('mock', 'deterministic', {
+      inputTokens: 0,
+      outputTokens: 0,
+    });
     const text = `${ticket.title} ${ticket.description}`.toLowerCase();
     const label = /duplicate|charged twice|double charge/.test(text)
       ? 'duplicate_charge'
@@ -71,6 +76,10 @@ export class MockLLM implements LLM {
     });
   }
   async draft(ticket: TicketInput, policies: SupportPolicy[]) {
+    await recordModelUsage('mock', 'deterministic', {
+      inputTokens: 0,
+      outputTokens: 0,
+    });
     const policy = policies[0];
     if (!policy) throw new PermanentError('No policy available for reply');
     return draftReplySchema.parse({

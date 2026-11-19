@@ -1,4 +1,5 @@
 'use client';
+import { RunMetrics } from './run-metrics';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { type RunDTO, type RunEvent } from '@unkillable/shared';
@@ -131,6 +132,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
           )}
         </section>
       )}
+      <RunMetrics runId={run.id} revision={run.sequence} />
       <ReliabilityPanel runId={run.id} support={support} />
       {support && <SupportOutputs state={run.state} />}
       <section className="mt-6 rounded-2xl border border-border p-6">

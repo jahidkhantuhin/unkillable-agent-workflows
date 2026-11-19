@@ -24,6 +24,7 @@ import {
 } from '@unkillable/shared';
 import { ReliabilityRepository } from './reliability';
 import { ApprovalRepository } from './approvals';
+import { OperationsRepository } from './operations';
 import { SupportRepository } from './support';
 import { SagaRepository } from './saga';
 import { PolicyRepository } from './policies';
@@ -41,6 +42,9 @@ export interface RunStore {
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  operations() {
+    return new OperationsRepository(this.client, this.db);
+  }
   async children(id: string) {
     return (
       await this.runs
@@ -375,3 +379,4 @@ export * from './moderation';
 export * from './content-files';
 export * from './notifications';
 export * from './whatsapp';
+export * from './operations';

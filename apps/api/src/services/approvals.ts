@@ -11,6 +11,14 @@ function dto(
 ) {
   return approvalDTOSchema.parse({
     ...record,
+    sla: record.sla
+      ? Object.fromEntries(
+          Object.entries(record.sla).map(([key, value]) => [
+            key,
+            value instanceof Date ? value.toISOString() : value,
+          ]),
+        )
+      : undefined,
     reviews: record.reviews.map((review) => ({
       ...review,
       at: review.at.toISOString(),

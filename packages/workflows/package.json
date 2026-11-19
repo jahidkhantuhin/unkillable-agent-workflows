@@ -13,6 +13,9 @@
     "@ai-sdk/openai-compatible": "3.0.92",
     "@langchain/langgraph": "1.7.4",
     "@langchain/langgraph-checkpoint-mongodb": "1.5.1",
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.301.2",
+    "@opentelemetry/sdk-trace-node": "2.12.1",
     "@unkillable/shared": "workspace:*",
     "ai": "7.0.173",
     "mongodb-checkpoint-driver": "npm:mongodb@6.22.0",
@@ -29,6 +32,7 @@
     "./support-providers": "./src/support-providers.ts",
     ".": "./src/index.ts",
     "./runtime": "./src/runtime.ts",
-    "./retry": "./src/retry.ts"
+    "./retry": "./src/retry.ts",
+    "./observability": "./src/observability.ts"
   }
 }

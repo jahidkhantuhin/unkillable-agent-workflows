@@ -312,3 +312,9 @@ GitHub: [placeholder] · LinkedIn: [placeholder] · Email: [placeholder]
 ### Optional WhatsApp approvals (Step 14 follow-up)
 
 Telegram remains available. Connect your own test phone through Twilio WhatsApp Sandbox, receive pending proposals, and reply with approval/rejection codes; editing opens the authenticated web inbox. Notification settings include linking, preferences, test/resend, delivery status and unlink controls. See [WhatsApp local setup](docs/WHATSAPP-LOCAL.md) for account creation, one HTTPS tunnel, environment variables and focused phone tests. WhatsApp defaults off and does not require chaos mode. Automated tests mock Twilio; live phone delivery requires your own account and setup.
+
+## Step 15: Approval deadlines, tracing and cost
+
+Approvals now carry workflow-specific reminder, escalation and expiry deadlines. A separate delayed BullMQ queue records web reminders, re-notifies eligible optional channels and safely rejects or cancels overdue proposals. Inbox cards show countdowns and role-group escalation; run pages show attempt timing, approval wait, model tokens and known estimated USD. Analytics summarizes cost by workflow. Mock calls cost zero; missing usage/pricing remains unknown.
+
+See [Step 15](docs/STEP-15.md) for three focused tests, policy JSON, configurable rates, deadline race behavior and the optional local OpenTelemetry collector. New settings: `APPROVAL_SLA_ENABLED`, `APPROVAL_SLA_POLICIES`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` and `LLM_PRICING_JSON`. Existing approvals retain their original policy snapshot; Telegram, WhatsApp and chaos mode are not required.

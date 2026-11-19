@@ -1,3 +1,4 @@
+import { operationsRoutes } from './routes/operations';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
 import helmet from 'helmet';
@@ -81,6 +82,7 @@ export function createApp(
     app.use('/notifications/whatsapp', whatsappWebhookRoutes(whatsappService));
   if (authService) app.use('/auth', authRoutes(authService, origins));
   if (authService && runService) {
+    app.use(operationsRoutes(runService.repository.operations(), authService));
     if (whatsappService)
       app.use(
         '/notifications/whatsapp',

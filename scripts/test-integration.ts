@@ -22,6 +22,7 @@ const result = spawnSync(
     'apps/api/src/policies.integration.test.ts',
     'apps/api/src/moderation.integration.test.ts',
     'apps/api/src/time-travel.integration.test.ts',
+    'apps/api/src/operations.integration.test.ts',
     'apps/api/src/whatsapp.integration.test.ts',
     'apps/api/src/notifications.integration.test.ts',
   ],
@@ -34,6 +35,10 @@ const result = spawnSync(
       INTEGRATION_MAILPIT_URL:
         process.env.MAILPIT_API_URL ?? 'http://127.0.0.1:8025',
       SUPPORT_LLM_PROVIDER: 'mock',
+      APPROVAL_SLA_ENABLED: 'true',
+      APPROVAL_SLA_POLICIES: '{}',
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: '',
+      LLM_PRICING_JSON: '{}',
     },
   },
 );

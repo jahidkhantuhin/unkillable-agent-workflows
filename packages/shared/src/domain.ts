@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { slaSchema } from './operations';
 
 export const idSchema = z.string().min(1).max(128);
 export const roleSchema = z.enum(['admin', 'approver', 'viewer']);
@@ -63,6 +64,7 @@ export const runSchema = z.object({
   forkAsNode: z.string().min(1).max(80).optional(),
 });
 export const approvalSchema = z.object({
+  sla: slaSchema.optional(),
   ...documentFields,
   title: z.string().default(''),
   runId: idSchema,

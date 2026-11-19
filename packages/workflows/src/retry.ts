@@ -1,3 +1,4 @@
+import { observedAttempt } from './observability';
 import {
   defaultRetryPolicy,
   retryDelay,
@@ -28,7 +29,9 @@ export async function retryOperation<T>(
       );
     const current = await store.start(previous?.policy ?? policy);
     try {
-      const result = await operation(current.attempt);
+      const result = await observedAttempt(nodeId, current.attempt, () =>
+        operation(current.attempt),
+      );
       await store.succeed();
       return result;
     } catch (error) {

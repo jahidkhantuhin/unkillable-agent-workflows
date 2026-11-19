@@ -7,8 +7,10 @@ import {
   moderationIndexes,
   notificationIndexes,
   whatsappIndexes,
+  operationsIndexes,
 } from '@unkillable/storage';
 export const collectionIndexes: Record<string, IndexDescription[]> = {
+  ...operationsIndexes,
   users: [{ key: { email: 1 }, unique: true }],
   memberships: [
     { key: { workspaceId: 1, userId: 1 }, unique: true },

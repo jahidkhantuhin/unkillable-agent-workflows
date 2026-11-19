@@ -14,7 +14,7 @@ async function forward(
   const pathname = path.join('/');
   const isRun =
     pathname === 'runs' ||
-    /^runs\/[0-9a-f-]{36}(\/(events|reliability|graph|diff|forks|checkpoints)(\/[0-9a-f-]{36})?)?$/.test(
+    /^runs\/[0-9a-f-]{36}(\/(events|metrics|reliability|graph|diff|forks|checkpoints)(\/[0-9a-f-]{36})?)?$/.test(
       pathname,
     );
   const isDeadLetter =
@@ -23,7 +23,8 @@ async function forward(
   const stream = isRun && pathname.endsWith('/events');
   const isTicket = pathname === 'tickets' || pathname === 'tickets/examples';
   const isPolicy = pathname === 'policies' || pathname === 'policies/dry-run';
-  const isAnalytics = pathname === 'analytics';
+  const isAnalytics =
+    pathname === 'analytics' || pathname === 'analytics/costs';
   const isNotification =
     /^notifications\/(settings|telegram\/(link|unlink)|whatsapp\/(settings|link|unlink|test|resend)|links\/(inspect|resolve|[0-9a-f-]{36}))$/.test(
       pathname,

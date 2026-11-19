@@ -1,3 +1,7 @@
+import { shutdownTracing } from '@unkillable/workflows/observability';
+import { slaConfigSchema, observabilityConfigSchema } from '@unkillable/shared';
+slaConfigSchema.parse(process.env);
+observabilityConfigSchema.parse(process.env);
 import { Worker, Queue, UnrecoverableError, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import { MongoClient } from 'mongodb';
@@ -208,6 +212,7 @@ async function shutdown() {
   await queue.close();
   connection.disconnect();
   await executor.close();
+  await shutdownTracing();
   smtp.close();
   await mongo.close();
   clearTimeout(timeout);
