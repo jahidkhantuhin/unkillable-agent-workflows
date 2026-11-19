@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { AuthProvider } from './auth-provider';
 import type { Identity } from '@unkillable/shared';
 import { ToastProvider, useToast } from './toast-provider';
+import { PwaRegistration } from './pwa';
 export function Providers({
   children,
   initialIdentity,
@@ -15,6 +16,7 @@ export function Providers({
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <ToastProvider>
+        <PwaRegistration />
         <AuthProvider initialIdentity={initialIdentity}>
           {children}
         </AuthProvider>

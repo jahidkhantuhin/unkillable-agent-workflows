@@ -5,6 +5,7 @@ import {
 import { approvalDTOSchema, type ApprovalDecision } from '@unkillable/shared';
 import { HttpError } from '../errors';
 import type { RunService } from './runs';
+import type { ClientSession } from 'mongodb';
 function dto(
   record: NonNullable<Awaited<ReturnType<ApprovalRepository['get']>>>,
 ) {
@@ -50,6 +51,7 @@ export class ApprovalService {
     decision: ApprovalDecision,
     actorId: string,
     role = 'admin',
+    session?: ClientSession,
   ) {
     try {
       await this.get(id, role);
@@ -58,11 +60,12 @@ export class ApprovalService {
         version,
         decision,
         actorId,
+        session,
       );
       if (!runId)
         throw new HttpError(404, 'APPROVAL_NOT_FOUND', 'Approval not found');
       // The durable dispatch marker survives a queue outage or API restart.
-      await this.runs.reconcile().catch(() => {});
+      if (!session) await this.runs.reconcile().catch(() => {});
       return { runId };
     } catch (error) {
       if (error instanceof ApprovalConflictError)

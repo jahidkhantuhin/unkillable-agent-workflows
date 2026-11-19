@@ -44,7 +44,11 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
           ? 'Account created with viewer access.'
           : 'Signed in successfully.',
       );
-      router.replace('/runs');
+      router.replace(
+        new URL(window.location.href).searchParams.get('next') === '/approve'
+          ? '/approve'
+          : '/runs',
+      );
       router.refresh();
     } catch (error) {
       toast.error(error, 'Unable to connect. Try again.');

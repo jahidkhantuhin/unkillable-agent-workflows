@@ -11,6 +11,8 @@ import { useAuth } from './auth-provider';
 import { PolicyTrace } from './policy-trace';
 import { useToast } from './toast-provider';
 import { DownloadContent } from './download-content';
+import { ApprovalLinks } from './approval-links';
+import { InstallApp } from './pwa';
 function ApprovalCard({
   approval,
   onResolved,
@@ -71,7 +73,10 @@ function ApprovalCard({
     }
   }
   return (
-    <article className="rounded-2xl border border-border p-6">
+    <article
+      id={`approval-${approval.id}`}
+      className="scroll-mt-4 rounded-2xl border border-border p-4 sm:p-6"
+    >
       <h2 className="break-words text-lg font-semibold">
         {approval.title || original}
       </h2>
@@ -161,7 +166,7 @@ function ApprovalCard({
           {error}
         </p>
       )}
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap [&_button]:min-h-11">
         <Button
           disabled={busy || alreadyReviewed || draft !== original}
           onClick={() => resolve({ action: 'approve' })}
@@ -198,6 +203,11 @@ function ApprovalCard({
           Reject
         </Button>
       </div>
+      <ApprovalLinks
+        key={approval.version}
+        id={approval.id}
+        disabled={busy || alreadyReviewed}
+      />
     </article>
   );
 }
@@ -247,6 +257,7 @@ export function ApprovalInbox() {
     <>
       <p className="text-xs tracking-widest text-emerald-500">HUMAN CONTROL</p>
       <h1 className="mt-3 text-4xl font-semibold">Approval Inbox</h1>
+      <InstallApp compact />
       <p className="mt-3 text-sm text-muted-foreground">
         Review the proposed notice, approve it, edit it, or reject with a
         reason. Updates every 2 seconds.

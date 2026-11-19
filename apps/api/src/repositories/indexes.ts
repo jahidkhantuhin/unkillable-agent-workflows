@@ -5,6 +5,7 @@ import {
   supportIndexes,
   policyIndexes,
   moderationIndexes,
+  notificationIndexes,
 } from '@unkillable/storage';
 export const collectionIndexes: Record<string, IndexDescription[]> = {
   users: [{ key: { email: 1 }, unique: true }],
@@ -55,6 +56,7 @@ export const collectionIndexes: Record<string, IndexDescription[]> = {
   ...supportIndexes,
   ...policyIndexes,
   ...moderationIndexes,
+  ...notificationIndexes,
 };
 /** createIndexes is idempotent and fails startup on conflicting uniqueness guarantees. */
 export async function bootstrapIndexes(db: Db) {

@@ -1,0 +1,9 @@
+{
+  "update_id": 101,
+  "callback_query": {
+    "id": "fixture-callback",
+    "data": "decision:LINK_ID",
+    "from": { "id": 111, "is_bot": false },
+    "message": { "chat": { "id": 111, "type": "private" } }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "update_id": 100,
+  "message": {
+    "text": "/start PAIR_CODE",
+    "from": { "id": 111, "is_bot": false },
+    "chat": { "id": 111, "type": "private" }
+  }
+}

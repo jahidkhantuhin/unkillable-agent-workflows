@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import type { MongoClient, Db, Document, IndexDescription } from 'mongodb';
+import type {
+  MongoClient,
+  Db,
+  Document,
+  IndexDescription,
+  ClientSession,
+} from 'mongodb';
 import {
   approvalSchema,
   approvalDecisionSchema,
@@ -117,11 +123,12 @@ export class ApprovalRepository {
     version: number,
     input: ApprovalDecision,
     actorId: string,
+    externalSession?: ClientSession,
   ) {
     const decision = approvalDecisionSchema.parse(input);
-    const session = this.client.startSession();
+    const session = externalSession ?? this.client.startSession();
     try {
-      return await session.withTransaction(async () => {
+      const operation = async () => {
         const collection = this.db.collection<Stored>('approvals');
         const doc = await collection.findOne({ id }, { session });
         if (!doc) return null;
@@ -247,9 +254,12 @@ export class ApprovalRepository {
           session,
         );
         return run.id;
-      });
+      };
+      return externalSession
+        ? await operation()
+        : await session.withTransaction(operation);
     } finally {
-      await session.endSession();
+      if (!externalSession) await session.endSession();
     }
   }
 }

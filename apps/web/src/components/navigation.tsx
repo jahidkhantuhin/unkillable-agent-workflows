@@ -14,6 +14,7 @@ const sections = [
   'Analytics',
   'Policies',
   'Moderation',
+  'Notifications',
 ];
 export function Navigation({
   className,

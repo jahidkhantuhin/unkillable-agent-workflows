@@ -24,6 +24,10 @@ async function forward(
   const isTicket = pathname === 'tickets' || pathname === 'tickets/examples';
   const isPolicy = pathname === 'policies' || pathname === 'policies/dry-run';
   const isAnalytics = pathname === 'analytics';
+  const isNotification =
+    /^notifications\/(settings|telegram\/(link|unlink)|links\/(inspect|resolve|[0-9a-f-]{36}))$/.test(
+      pathname,
+    );
   const isModeration =
     pathname === 'moderation' ||
     pathname === 'moderation/uploads' ||
@@ -44,38 +48,44 @@ async function forward(
     !isChaos &&
     !isPolicy &&
     !isAnalytics &&
-    !isModeration
+    !isModeration &&
+    !isNotification
   )
     return NextResponse.json(
       { error: { message: 'Not found' } },
       { status: 404 },
     );
   if (
-    isModeration
-      ? request.method !== (pathname === 'moderation/uploads' ? 'POST' : 'GET')
-      : isPolicy
-        ? !(pathname === 'policies' && request.method === 'GET') &&
-          request.method !== 'POST'
-        : isAnalytics
-          ? request.method !== 'GET'
-          : isChaos
-            ? request.method !==
-              (/^chaos\/(mode|status)$/.test(pathname) ? 'GET' : 'POST')
-            : isTicket
-              ? request.method !== (pathname === 'tickets' ? 'POST' : 'GET')
-              : isApproval
-                ? request.method !==
-                  (pathname.endsWith('/resolve') ? 'POST' : 'GET')
-                : isDeadLetter
+    isNotification
+      ? !(pathname === 'notifications/settings' && request.method === 'GET') &&
+        request.method !== 'POST'
+      : isModeration
+        ? request.method !==
+          (pathname === 'moderation/uploads' ? 'POST' : 'GET')
+        : isPolicy
+          ? !(pathname === 'policies' && request.method === 'GET') &&
+            request.method !== 'POST'
+          : isAnalytics
+            ? request.method !== 'GET'
+            : isChaos
+              ? request.method !==
+                (/^chaos\/(mode|status)$/.test(pathname) ? 'GET' : 'POST')
+              : isTicket
+                ? request.method !== (pathname === 'tickets' ? 'POST' : 'GET')
+                : isApproval
                   ? request.method !==
-                    (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
-                  : isRun
-                    ? request.method !== 'GET' &&
-                      !(
-                        (pathname === 'runs' || pathname.endsWith('/forks')) &&
-                        request.method === 'POST'
-                      )
-                    : (request.method === 'GET') !== (pathname === 'auth/me')
+                    (pathname.endsWith('/resolve') ? 'POST' : 'GET')
+                  : isDeadLetter
+                    ? request.method !==
+                      (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
+                    : isRun
+                      ? request.method !== 'GET' &&
+                        !(
+                          (pathname === 'runs' ||
+                            pathname.endsWith('/forks')) &&
+                          request.method === 'POST'
+                        )
+                      : (request.method === 'GET') !== (pathname === 'auth/me')
   )
     return NextResponse.json(
       { error: { message: 'Method not allowed' } },

@@ -199,6 +199,7 @@ export const sectionPermissions = {
   runs: 'runs:read',
   workflows: 'workflows:read',
   approvals: 'approvals:read',
+  notifications: 'approvals:read',
   chaos: 'chaos:manage',
   analytics: 'analytics:read',
   policies: 'policies:manage',

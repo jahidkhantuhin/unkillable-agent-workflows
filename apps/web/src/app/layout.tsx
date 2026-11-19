@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import { Activity, ShieldCheck } from 'lucide-react';
 import { Providers, ThemeToggle } from '@/components/providers';
@@ -10,9 +10,16 @@ import './globals.css';
 import { ChaosBanner } from '@/components/chaos-panel';
 import { MobileNavigation } from '@/components/mobile-navigation';
 export const metadata: Metadata = {
+  appleWebApp: {
+    capable: true,
+    title: 'Unkillable',
+    statusBarStyle: 'default',
+  },
+  icons: { apple: '/icons/app-192.png' },
   title: 'Unkillable · Agent Workflows',
   description: 'Durable agent workflows. Human control. Proof of recovery.',
 };
+export const viewport: Viewport = { themeColor: '#0b100e' };
 export default async function RootLayout({
   children,
 }: {

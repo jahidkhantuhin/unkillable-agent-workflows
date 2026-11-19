@@ -4,6 +4,10 @@ import pino from 'pino';
 import { configSchema } from './config';
 import { createApp } from './app';
 import { TimeTravelService } from './services/time-travel';
+import { NotificationService } from './services/notifications';
+import { ApprovalService } from './services/approvals';
+import { ApprovalSigner } from './services/approval-signing';
+import { NotificationRepository } from '@unkillable/storage';
 import { bootstrapIndexes } from './repositories/indexes';
 import { MongoMembershipRepository } from './repositories/documents';
 import { createMongoAuth } from './auth';
@@ -47,6 +51,23 @@ const runService = new RunService(new RunRepository(mongo), queue, (error) =>
   logger.warn({ err: error }, 'Run persisted; dispatch will be retried'),
 );
 await runService.initialize();
+const notifications = new NotificationService(
+  new NotificationRepository(mongo),
+  new ApprovalService(runService.repository.approvals(), runService),
+  runService,
+  memberships,
+  new ApprovalSigner(config.BETTER_AUTH_SECRET),
+  config,
+);
+const notificationTimer = setInterval(() => {
+  void notifications
+    .deliver()
+    .catch(() =>
+      logger.warn(
+        'Approval notification delivery deferred; web inbox remains available',
+      ),
+    );
+}, 5000).unref();
 const dispatchTimer = setInterval(() => {
   void runService
     .reconcile()
@@ -83,6 +104,7 @@ const app = createApp(
     config.MONGODB_URI,
     mongo.db().databaseName,
   ),
+  notifications,
 );
 let stopChaos = async () => {};
 const server = app.listen(config.API_PORT, () => {
@@ -106,6 +128,7 @@ async function shutdown() {
   if (closing) return;
   closing = true;
   clearInterval(dispatchTimer);
+  clearInterval(notificationTimer);
   await stopChaos();
   closeRunStreams();
   const timeout = setTimeout(() => {
