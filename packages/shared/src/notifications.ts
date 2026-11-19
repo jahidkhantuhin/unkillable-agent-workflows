@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { whatsappConfigFields, whatsappConfigSchema } from './whatsapp';
 export const notificationConfigFields = {
+  ...whatsappConfigFields,
   WEB_PUBLIC_URL: z
     .url()
     .default('http://localhost:3000')
@@ -26,6 +28,10 @@ export const notificationConfigFields = {
 export const notificationConfigSchema = z
   .object(notificationConfigFields)
   .superRefine((c, ctx) => {
+    const whatsapp = whatsappConfigSchema.safeParse(c);
+    if (!whatsapp.success)
+      for (const issue of whatsapp.error.issues)
+        ctx.addIssue({ code: 'custom', message: issue.message });
     if (
       c.TELEGRAM_ENABLED === 'true' &&
       (!/^\d+:[A-Za-z0-9_-]+$/.test(c.TELEGRAM_BOT_TOKEN) ||

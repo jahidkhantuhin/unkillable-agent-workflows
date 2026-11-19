@@ -25,7 +25,7 @@ async function forward(
   const isPolicy = pathname === 'policies' || pathname === 'policies/dry-run';
   const isAnalytics = pathname === 'analytics';
   const isNotification =
-    /^notifications\/(settings|telegram\/(link|unlink)|links\/(inspect|resolve|[0-9a-f-]{36}))$/.test(
+    /^notifications\/(settings|telegram\/(link|unlink)|whatsapp\/(settings|link|unlink|test|resend)|links\/(inspect|resolve|[0-9a-f-]{36}))$/.test(
       pathname,
     );
   const isModeration =
@@ -57,8 +57,11 @@ async function forward(
     );
   if (
     isNotification
-      ? !(pathname === 'notifications/settings' && request.method === 'GET') &&
-        request.method !== 'POST'
+      ? !(
+          (pathname === 'notifications/settings' ||
+            pathname === 'notifications/whatsapp/settings') &&
+          request.method === 'GET'
+        ) && request.method !== 'POST'
       : isModeration
         ? request.method !==
           (pathname === 'moderation/uploads' ? 'POST' : 'GET')

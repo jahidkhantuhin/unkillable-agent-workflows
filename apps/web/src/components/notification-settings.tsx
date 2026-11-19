@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { useToast } from './toast-provider';
 import { notificationRequest } from '../lib/notifications';
 import { InstallApp } from './pwa';
+import { WhatsAppSettings } from './whatsapp-settings';
 export function NotificationSettings() {
   const toast = useToast();
   const [data, setData] = useState<ReturnType<
@@ -167,6 +168,7 @@ export function NotificationSettings() {
           </>
         )}
       </section>
+      <WhatsAppSettings />
       <InstallApp />
     </>
   );

@@ -308,3 +308,7 @@ The complete user-approved specification is preserved in [docs/BUILD-PROMPT.md](
 **Jahid Khan Tuhin — Full Stack JavaScript Engineer**
 
 GitHub: [placeholder] · LinkedIn: [placeholder] · Email: [placeholder]
+
+### Optional WhatsApp approvals (Step 14 follow-up)
+
+Telegram remains available. Connect your own test phone through Twilio WhatsApp Sandbox, receive pending proposals, and reply with approval/rejection codes; editing opens the authenticated web inbox. Notification settings include linking, preferences, test/resend, delivery status and unlink controls. See [WhatsApp local setup](docs/WHATSAPP-LOCAL.md) for account creation, one HTTPS tunnel, environment variables and focused phone tests. WhatsApp defaults off and does not require chaos mode. Automated tests mock Twilio; live phone delivery requires your own account and setup.

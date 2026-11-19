@@ -82,7 +82,7 @@ export class NotificationService {
         'Approval review requires an approver or administrator',
       );
   }
-  private async current(actor: Reviewer) {
+  async current(actor: Reviewer) {
     const member = await this.memberships.get(actor.id);
     if (!member)
       throw new HttpError(403, 'FORBIDDEN', 'Workspace membership required');
@@ -192,6 +192,33 @@ export class NotificationService {
       expiresAt: new Date(approve.payload.exp * 1000).toISOString(),
     };
   }
+  async pendingFor(actor: Reviewer) {
+    actor = await this.current(actor);
+    return (await this.approvals.list(actor.role)).filter(
+      (record) => !record.reviews.some((review) => review.actorId === actor.id),
+    );
+  }
+  async channelDecisions(actor: Reviewer, id: string) {
+    actor = await this.current(actor);
+    const approval = await this.pending(actor, id);
+    const approve = await this.issue(actor, id, approval.version, 'approve'),
+      reject = await this.issue(actor, id, approval.version, 'reject');
+    return {
+      approval,
+      approveId: approve.payload.jti,
+      rejectId: reject.payload.jti,
+      expiresAt: new Date(approve.payload.exp * 1000),
+    };
+  }
+  async resolveChannel(
+    actor: Reviewer,
+    jti: string,
+    channel: 'telegram' | 'whatsapp',
+  ) {
+    const payload = await this.store.payload(jti);
+    if (!payload) throw new InvalidApprovalLink();
+    return this.resolve(actor, this.signer.sign(payload), channel);
+  }
   async inspect(actor: Reviewer, token: string) {
     actor = await this.current(actor);
     const payload = this.signer.verify(token);
@@ -211,7 +238,7 @@ export class NotificationService {
   async resolve(
     actor: Reviewer,
     token: string,
-    channel: 'web' | 'telegram' = 'web',
+    channel: 'web' | 'telegram' | 'whatsapp' = 'web',
   ) {
     actor = await this.current(actor);
     const payload = this.signer.verify(token);
@@ -233,7 +260,7 @@ export class NotificationService {
             ? { action: 'approve' }
             : {
                 action: 'reject',
-                reason: `Rejected through ${channel === 'telegram' ? 'Telegram' : 'a signed approval link'}.`,
+                reason: `Rejected through ${channel === 'telegram' ? 'Telegram' : channel === 'whatsapp' ? 'WhatsApp' : 'a signed approval link'}.`,
               },
           actor.id,
           actor.role,

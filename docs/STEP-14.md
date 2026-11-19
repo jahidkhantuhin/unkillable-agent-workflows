@@ -89,3 +89,7 @@ pnpm test:e2e
 Signer tests cover payload/action/owner/version tampering, malformed signatures, wrong keys and exact expiry. Integration cases cover Origin/roles, disabled Telegram, read-only previews, single-use/cross-channel races and rollback, edited first reviews, callback replay/forgery/revocation, pairing expiry/unlinking, admin-only moderation and delivery recovery. Telegram fixtures/transport mocks avoid real messages. The suite is included in pre-push and CI. Browser checks cover phone review/confirmation/replay, disabled settings, manifest PNGs, service-worker headers and offline behavior. Actual results are recorded in PROGRESS.md.
 
 Official references: [Telegram Bot API](https://core.telegram.org/bots/api), [Telegram deep linking](https://core.telegram.org/bots/features#deep-linking), [Next.js PWA guide](https://nextjs.org/docs/app/guides/progressive-web-apps).
+
+## WhatsApp follow-up
+
+Step 14 also supports an independent optional WhatsApp Sandbox channel. Follow [the complete local setup guide](WHATSAPP-LOCAL.md), including creating a Twilio account, joining its Sandbox, exposing the local web app through one HTTPS tunnel, linking a reviewer and testing approve/reject/edit. Telegram implementation and preferences remain separate.

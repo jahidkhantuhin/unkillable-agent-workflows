@@ -32,6 +32,7 @@ const env = {
   NEXT_PUBLIC_API_URL: 'http://127.0.0.1:4100',
   SUPPORT_LLM_PROVIDER: 'mock',
   TELEGRAM_ENABLED: 'false',
+  WHATSAPP_ENABLED: 'false',
   WEB_PUBLIC_URL: 'http://127.0.0.1:3100',
   ORGMIND_RETRIEVER_ENABLED: 'false',
   CHAOS_ENABLED: 'false',

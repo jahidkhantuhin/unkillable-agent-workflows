@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 const config: NextConfig = {
   transpilePackages: ['@unkillable/shared'],
   devIndicators: false,
+  allowedDevOrigins: process.env.WEB_PUBLIC_URL
+    ? [new URL(process.env.WEB_PUBLIC_URL).hostname]
+    : [],
   async headers() {
     return [
       {

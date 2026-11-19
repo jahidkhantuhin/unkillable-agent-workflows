@@ -8,6 +8,8 @@ import { NotificationService } from './services/notifications';
 import { ApprovalService } from './services/approvals';
 import { ApprovalSigner } from './services/approval-signing';
 import { NotificationRepository } from '@unkillable/storage';
+import { WhatsAppRepository } from '@unkillable/storage';
+import { WhatsAppService } from './services/whatsapp';
 import { bootstrapIndexes } from './repositories/indexes';
 import { MongoMembershipRepository } from './repositories/documents';
 import { createMongoAuth } from './auth';
@@ -68,6 +70,20 @@ const notificationTimer = setInterval(() => {
       ),
     );
 }, 5000).unref();
+const whatsapp = new WhatsAppService(
+  new WhatsAppRepository(mongo),
+  notifications,
+  config,
+);
+const whatsappTimer = setInterval(() => {
+  void whatsapp
+    .deliver()
+    .catch(() =>
+      logger.warn(
+        'WhatsApp delivery deferred; check Notification settings or use the web inbox',
+      ),
+    );
+}, 5000).unref();
 const dispatchTimer = setInterval(() => {
   void runService
     .reconcile()
@@ -105,6 +121,7 @@ const app = createApp(
     mongo.db().databaseName,
   ),
   notifications,
+  whatsapp,
 );
 let stopChaos = async () => {};
 const server = app.listen(config.API_PORT, () => {
@@ -129,6 +146,7 @@ async function shutdown() {
   closing = true;
   clearInterval(dispatchTimer);
   clearInterval(notificationTimer);
+  clearInterval(whatsappTimer);
   await stopChaos();
   closeRunStreams();
   const timeout = setTimeout(() => {

@@ -25,6 +25,11 @@ import { timeTravelRoutes } from './routes/time-travel';
 import type { TimeTravelService } from './services/time-travel';
 import type { NotificationService } from './services/notifications';
 import { notificationRoutes } from './routes/notifications';
+import {
+  whatsappWebhookRoutes,
+  whatsappSettingsRoutes,
+} from './routes/whatsapp';
+import type { WhatsAppService } from './services/whatsapp';
 export function createApp(
   deps: HealthDependencies,
   origins = ['http://localhost:3000'],
@@ -35,6 +40,7 @@ export function createApp(
   moderationService?: ModerationService,
   timeTravelService?: TimeTravelService,
   notificationService?: NotificationService,
+  whatsappService?: WhatsAppService,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -71,8 +77,15 @@ export function createApp(
     express.json({ limit: '1mb' }),
   );
   app.use(healthRoutes(deps));
+  if (whatsappService)
+    app.use('/notifications/whatsapp', whatsappWebhookRoutes(whatsappService));
   if (authService) app.use('/auth', authRoutes(authService, origins));
   if (authService && runService) {
+    if (whatsappService)
+      app.use(
+        '/notifications/whatsapp',
+        whatsappSettingsRoutes(whatsappService, authService, origins),
+      );
     if (notificationService)
       app.use(
         '/notifications',
