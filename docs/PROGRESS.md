@@ -377,3 +377,15 @@ Verification performed locally:
 - Screenshots screenshots/action-toast-mobile.png and screenshots/action-toast-success.png were visually inspected with clear contrast, readable messages and dismiss controls. Final pnpm lint passed after browser-test/documentation updates; progress-file formatting was checked afterward.
 
 README, STEP-13.md and UI-FEEDBACK.md explain notification behavior, focused manual checks and the reusable API. No new dependencies/environment variables, .env edits, Git commands/commits/pushes, live customer/model/payment/email/platform effects or Step 14 work. Backend integration suites were not rerun for this UI follow-up; the browser suite uses isolated local services and mock models.
+
+### Step 13 follow-up: pre-push SMTP failure diagnosis
+
+The user's push was correctly blocked by the integration hook: the fresh-message SMTP concurrency case raised RetryableError because Mailpit transport failed. The Better Auth Invalid password warning came from an intentional incorrect-credentials test and was unrelated. The old mail adapter discarded the transport cause, so the original connection/timeout/SMTP-response cause cannot be confirmed retrospectively.
+
+Read-only Docker checks found the local MongoDB, Redis and Mailpit containers healthy. The exact SMTP test passed alone; a subsequent full integration run passed all 50 tests across 11 files in 76.99 seconds. No service restart or data deletion was needed. This does not establish the cause of the earlier intermittent failure.
+
+Added safe SMTP error-code, command and response-code details to transport errors while preserving the underlying cause and existing retryable/permanent classifications. Added MailpitMailer.verify and an actual SMTP readiness probe at support-suite setup, without sending a message. Four mocked transport tests cover retained connection diagnostics/cause, temporary vs permanent SMTP replies, successful no-send probing and failed readiness. The original race assertion still checks one Mailpit capture and one persisted delivery. No test retry, timeout increase, assertion relaxation, SMTP retry-policy change, hook bypass or Git command was introduced.
+
+Verification: five independent executions of the original SMTP concurrency test all passed, stopping on any failure (no retries). pnpm check passed lint/format, all workspace typechecks, 116 unit/component tests (50 service-backed tests deliberately skipped there), and production build. README explains Mailpit dependency checks and the difference between the negative auth warning and a failed integration test. A final full integration run with the readiness probe is being checked below.
+
+Final pnpm test:integration with SMTP readiness enabled passed all 50 tests across 11 files in 80.82 seconds. No browser run was needed for this transport/test-only change. The exact earlier transient failure remains unconfirmed; future failures now retain the missing diagnostic information. No new dependencies/environment variables, .env edits, real customer/model/payment/email effects, commits/pushes or Step 14 work. Final progress/README formatting checks passed.

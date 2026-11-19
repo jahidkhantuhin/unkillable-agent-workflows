@@ -42,14 +42,38 @@ export class MailpitMailer {
         disableUrlAccess: true,
       });
     } catch (error) {
-      const code =
-        error && typeof error === 'object' && 'responseCode' in error
-          ? Number(error.responseCode)
-          : 0;
-      if (code >= 500)
-        throw new PermanentError('Mailpit rejected the local message');
-      throw new RetryableError('Local Mailpit SMTP unavailable');
+      throw this.failure(error);
     }
+  }
+  /** Checks the actual SMTP listener without sending a message. */
+  async verify() {
+    try {
+      await this.transport.verify();
+    } catch (error) {
+      throw this.failure(error);
+    }
+  }
+  private failure(error: unknown) {
+    const code =
+      error && typeof error === 'object' && 'responseCode' in error
+        ? Number(error.responseCode)
+        : 0;
+    const detail =
+      error && typeof error === 'object'
+        ? (error as { code?: unknown; command?: unknown })
+        : {};
+    const diagnostic = [detail.code, detail.command, code || undefined]
+      .filter(
+        (value) =>
+          typeof value === 'number' ||
+          (typeof value === 'string' && /^[A-Z0-9 _-]{1,50}$/i.test(value)),
+      )
+      .join(' / ');
+    const message = `${code >= 500 ? 'Mailpit rejected the local message' : 'Local Mailpit SMTP unavailable'}${diagnostic ? ` (${diagnostic})` : ''}`;
+    const failure =
+      code >= 500 ? new PermanentError(message) : new RetryableError(message);
+    failure.cause = error;
+    return failure;
   }
   close() {
     this.transport.close();

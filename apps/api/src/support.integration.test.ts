@@ -113,6 +113,8 @@ describe.skipIf(!uri || !redis || !mailpit)(
         .send({ version: approval!.version, decision });
     }
     beforeAll(async () => {
+      // An HTTP health badge does not prove that the SMTP listener is ready.
+      await smtp.verify();
       await client.connect();
       await bootstrapIndexes(db);
       await runs.support().seedExamples();
