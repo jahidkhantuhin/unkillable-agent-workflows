@@ -5,7 +5,9 @@ import { useState, type FormEvent } from 'react';
 import { registerSchema, loginSchema } from '@unkillable/shared';
 import { useAuth } from './auth-provider';
 import { Button } from './ui/button';
+import { useToast } from './toast-provider';
 export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
+  const toast = useToast();
   const router = useRouter();
   const { refresh } = useAuth();
   const [error, setError] = useState('');
@@ -23,6 +25,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
     const parsed = (register ? registerSchema : loginSchema).safeParse(input);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Check your details');
+      toast.error(parsed.error);
       return;
     }
     setPending(true);
@@ -36,9 +39,15 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
       if (!response.ok)
         throw new Error(data.error?.message ?? 'Unable to sign in');
       await refresh();
+      toast.success(
+        register
+          ? 'Account created with viewer access.'
+          : 'Signed in successfully.',
+      );
       router.replace('/runs');
       router.refresh();
     } catch (error) {
+      toast.error(error, 'Unable to connect. Try again.');
       setError(
         error instanceof Error
           ? error.message

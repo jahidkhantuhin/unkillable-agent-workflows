@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { analyticsDTOSchema } from '@unkillable/shared';
 
 import { Button } from './ui/button';
+import { useToast } from './toast-provider';
 function percent(value: number | null) {
   return value === null ? 'Not measured' : `${(value * 100).toFixed(1)}%`;
 }
 export function ApprovalAnalytics() {
+  const toast = useToast();
   const [data, setData] = useState<ReturnType<
       typeof analyticsDTOSchema.parse
     > | null>(null),
@@ -23,7 +25,9 @@ export function ApprovalAnalytics() {
       if (!response.ok) throw new Error('Unable to load approval analytics');
       setData(analyticsDTOSchema.parse(await response.json()));
       setError('');
+      if (!signal) toast.success('Analytics refreshed.');
     } catch (e) {
+      if (!signal) toast.error(e, 'Unable to load analytics');
       if (!signal?.aborted)
         setError(e instanceof Error ? e.message : 'Unable to load analytics');
     } finally {

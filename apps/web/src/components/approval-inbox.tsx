@@ -9,6 +9,8 @@ import {
 import { Button } from './ui/button';
 import { useAuth } from './auth-provider';
 import { PolicyTrace } from './policy-trace';
+import { useToast } from './toast-provider';
+import { DownloadContent } from './download-content';
 function ApprovalCard({
   approval,
   onResolved,
@@ -16,6 +18,7 @@ function ApprovalCard({
   approval: ApprovalDTO;
   onResolved: (next: ApprovalDTO) => void;
 }) {
+  const toast = useToast();
   const original =
     approval.reviews.find((review) => review.action === 'edit')?.message ??
     String(approval.proposedAction.message ?? '');
@@ -43,6 +46,13 @@ function ApprovalCard({
       const body = await response.json();
       if (!response.ok)
         throw new Error(body.error?.message ?? 'Unable to resolve approval');
+      toast.success(
+        decision.action === 'reject'
+          ? 'Rejection recorded.'
+          : decision.action === 'edit'
+            ? 'Edited draft review recorded.'
+            : 'Approval review recorded.',
+      );
       const current = await fetch(`/api/backend/approvals/${approval.id}`, {
         cache: 'no-store',
       });
@@ -52,6 +62,7 @@ function ApprovalCard({
         );
       onResolved(approvalDTOSchema.parse(await current.json()));
     } catch (error) {
+      toast.error(error, 'Unable to resolve approval');
       setError(
         error instanceof Error ? error.message : 'Unable to resolve approval',
       );
@@ -124,12 +135,12 @@ function ApprovalCard({
         />
       </label>
       {moderation && (
-        <a
+        <DownloadContent
           className="mt-3 inline-block text-sm underline"
-          href={`/api/backend/moderation/${approval.runId}/content`}
+          runId={approval.runId}
         >
           Download full original content before reviewing
-        </a>
+        </DownloadContent>
       )}
       <label className="mt-4 block text-sm font-medium">
         Review reason

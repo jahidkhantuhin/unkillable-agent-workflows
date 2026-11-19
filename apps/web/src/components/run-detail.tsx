@@ -12,6 +12,7 @@ import { observeRun } from '../lib/run-stream';
 import { RunChaosActions } from './chaos-panel';
 import { PolicyTrace } from './policy-trace';
 import { TimeTravelPanel } from './time-travel-panel';
+import { DownloadContent } from './download-content';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
@@ -95,12 +96,12 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
             {String(run.state.decision ?? 'pending')} ·{' '}
             {String(run.state.decisionReason ?? '')}
           </p>
-          <a
+          <DownloadContent
             className="mt-3 inline-block text-sm underline"
-            href={`/api/backend/moderation/${run.id}/content`}
+            runId={run.id}
           >
             Download original content (admin)
-          </a>
+          </DownloadContent>
           <p className="mt-2 text-xs text-muted-foreground">
             A succeeded workflow can publish or reject content. Publication and
             notifications are local records only. A compensated run withdraws

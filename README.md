@@ -265,6 +265,8 @@ A fork gets fresh run/business IDs and effect scopes. Pure results can carry ove
 
 ## Development checks
 
+Action feedback uses a shared toast provider throughout the dashboard and authentication pages. Submissions, approvals, Dead Letter actions, policy changes/dry-runs, Chaos controls, explicit refreshes, file selection/removal/downloads and theme changes show success or error notifications. Validation errors—including protected fork edits—stay visible until dismissed. Success messages last six seconds and pause while hovered or focused. Toasts survive client navigation; inline errors remain available. See [UI-FEEDBACK.md](docs/UI-FEEDBACK.md) for usage and focused tests.
+
 Before each push, Husky runs `pnpm check && pnpm test:integration`: lint/formatting → typecheck → service-free tests → production build → integration tests. This includes the SMTP-compensation recovery regression. The first failed command stops the sequence and blocks the push. You can run these commands manually without pushing. The pre-commit hook still runs lint-staged.
 
 After pulling these changes, run `pnpm prepare` once to activate the Git hooks (normal `pnpm install` also runs prepare). Hook setup is skipped if `HUSKY=0` or `CI` is set. Hook files use LF endings on Windows too. Local hooks can be bypassed, so CI remains the remote check.

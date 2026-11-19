@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@unkillable/shared';
 import { useAuth } from './auth-provider';
 import { runTitle } from './run-scenario';
+import { useToast } from './toast-provider';
 const button =
   'cursor-pointer rounded-xl border border-border px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40';
 async function read(path: string, signal?: AbortSignal, body?: unknown) {
@@ -42,6 +43,8 @@ function caption(c: CheckpointSummary) {
   return `Step ${c.step ?? '?'} · ${c.completed.at(-1) ?? 'Input'} · ${c.createdAt ? new Date(c.createdAt).toLocaleString() : 'No timestamp'}`;
 }
 export function TimeTravelPanel({ run }: { run: RunDTO }) {
+  const toast = useToast();
+  const refreshRequested = useRef(false);
   const { identity } = useAuth(),
     router = useRouter();
   const [checkpoints, setCheckpoints] = useState<CheckpointSummary[]>([]),
@@ -70,6 +73,10 @@ export function TimeTravelPanel({ run }: { run: RunDTO }) {
         setCheckpoints(page.checkpoints);
         setCursor(page.nextBefore);
         setRelations(forkRelationsSchema.parse(links));
+        if (refreshRequested.current) {
+          toast.success('Checkpoints and related runs refreshed.');
+          refreshRequested.current = false;
+        }
         setSelected((current) =>
           page.checkpoints.some((c) => c.id === current)
             ? current
@@ -82,10 +89,16 @@ export function TimeTravelPanel({ run }: { run: RunDTO }) {
         );
       })
       .catch((e) => {
-        if (!controller.signal.aborted) setError(String(e.message));
+        if (!controller.signal.aborted) {
+          setError(String(e.message));
+          if (refreshRequested.current) {
+            toast.error(e);
+            refreshRequested.current = false;
+          }
+        }
       });
     return () => controller.abort();
-  }, [run.id, run.status, revision]);
+  }, [run.id, run.status, revision, toast]);
   useEffect(() => {
     setDetail(null);
     setChanges([]);
@@ -95,10 +108,13 @@ export function TimeTravelPanel({ run }: { run: RunDTO }) {
     read(`${run.id}/checkpoints/${selected}`, controller.signal)
       .then((data) => setDetail(checkpointDetailSchema.parse(data)))
       .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) {
+          setError(e.message);
+          toast.error(e);
+        }
       });
     return () => controller.abort();
-  }, [run.id, selected]);
+  }, [run.id, selected, toast]);
   useEffect(() => {
     setChanges([]);
     if (!selected || !compare) return;
@@ -106,10 +122,13 @@ export function TimeTravelPanel({ run }: { run: RunDTO }) {
     read(`${run.id}/diff?from=${compare}&to=${selected}`, controller.signal)
       .then((data) => setChanges(checkpointDiffSchema.parse(data).changes))
       .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) {
+          setError(e.message);
+          toast.error(e);
+        }
       });
     return () => controller.abort();
-  }, [run.id, selected, compare]);
+  }, [run.id, selected, compare, toast]);
   async function older() {
     setBusy(true);
     setError('');
@@ -122,7 +141,13 @@ export function TimeTravelPanel({ run }: { run: RunDTO }) {
         ...page.checkpoints.filter((c) => !old.some((o) => o.id === c.id)),
       ]);
       setCursor(page.nextBefore);
+      toast.success(
+        page.checkpoints.length
+          ? 'Older checkpoints loaded.'
+          : 'All checkpoints are loaded.',
+      );
     } catch (e) {
+      toast.error(e);
       setError((e as Error).message);
     } finally {
       setBusy(false);
@@ -154,8 +179,12 @@ export function TimeTravelPanel({ run }: { run: RunDTO }) {
           edits: patch,
         }),
       );
+      toast.success(
+        'Fork created. The child has its own approvals and effect scope.',
+      );
       router.push(`/runs/${child.id}`);
     } catch (e) {
+      toast.error(e);
       setError((e as Error).message);
     } finally {
       setBusy(false);
@@ -171,7 +200,10 @@ export function TimeTravelPanel({ run }: { run: RunDTO }) {
         <h2 className="text-xl font-semibold">Time travel</h2>
         <button
           className={button}
-          onClick={() => setRevision((n) => n + 1)}
+          onClick={() => {
+            refreshRequested.current = true;
+            setRevision((n) => n + 1);
+          }}
           disabled={busy}
         >
           Refresh checkpoints

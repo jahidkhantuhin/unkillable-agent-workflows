@@ -7,6 +7,7 @@ import {
   dryRunDTOSchema,
 } from '@unkillable/shared';
 import { Button } from './ui/button';
+import { useToast } from './toast-provider';
 function formatPolicyDate(value: string | null) {
   if (!value) return 'Date unavailable';
   return new Intl.DateTimeFormat(undefined, {
@@ -38,6 +39,7 @@ const example = {
   fallback: 'require_approval',
 };
 export function PoliciesPanel() {
+  const toast = useToast();
   const [data, setData] = useState<ReturnType<
     typeof policiesDTOSchema.parse
   > | null>(null);
@@ -89,6 +91,11 @@ export function PoliciesPanel() {
       const body = await response.json();
       if (!response.ok)
         throw new Error(body.error?.message ?? 'Policy request failed');
+      toast.success(
+        save
+          ? 'New policy version activated. Existing decisions keep their saved policy.'
+          : 'Dry-run complete. No run or policy was changed.',
+      );
       if (save) {
         await load();
         setTrial(null);
@@ -100,6 +107,7 @@ export function PoliciesPanel() {
         setMessage('Dry-run only. No run or policy was changed.');
       }
     } catch (e) {
+      toast.error(e, 'Invalid policy');
       setError(e instanceof Error ? e.message : 'Invalid policy');
     } finally {
       setBusy(false);
@@ -153,6 +161,9 @@ export function PoliciesPanel() {
               variant="outline"
               onClick={() => {
                 setDraft(JSON.stringify(example, null, 2));
+                toast.success(
+                  'Example rules loaded into the draft. Not activated yet.',
+                );
                 setTrial(null);
               }}
             >
@@ -163,6 +174,7 @@ export function PoliciesPanel() {
               variant="outline"
               onClick={() => {
                 setDraft(JSON.stringify(data.current.policy, null, 2));
+                toast.success('Draft restored from the active policy.');
                 setTrial(null);
               }}
             >
@@ -243,6 +255,9 @@ export function PoliciesPanel() {
                     disabled={busy}
                     onClick={() => {
                       setDraft(JSON.stringify(row.policy, null, 2));
+                      toast.success(
+                        `Version ${row.version} loaded into the draft. Not activated yet.`,
+                      );
                       setTrial(null);
                     }}
                   >

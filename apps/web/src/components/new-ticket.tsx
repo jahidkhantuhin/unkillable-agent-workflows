@@ -10,6 +10,7 @@ import {
   type TicketInput,
 } from '@unkillable/shared';
 import { Button } from './ui/button';
+import { useToast } from './toast-provider';
 type TicketDraft = Omit<TicketInput, 'amountCents'> & { amountCents: string };
 function inputFrom(example: TicketInput): TicketDraft {
   return {
@@ -23,6 +24,7 @@ function inputFrom(example: TicketInput): TicketDraft {
   };
 }
 export function NewTicket() {
+  const toast = useToast();
   const [ticket, setTicket] = useState<TicketDraft>(() =>
     inputFrom(supportExamples[0]),
   );
@@ -66,8 +68,11 @@ export function NewTicket() {
       const body = await response.json();
       if (!response.ok)
         throw new Error(body.error?.message ?? 'Unable to create ticket');
-      router.push(`/runs/${runDTOSchema.parse(body).id}`);
+      const run = runDTOSchema.parse(body);
+      toast.success('Support ticket created and queued.');
+      router.push(`/runs/${run.id}`);
     } catch (error) {
+      toast.error(error, 'Unable to create ticket');
       setError(
         error instanceof Error ? error.message : 'Unable to create ticket',
       );
@@ -100,7 +105,10 @@ export function NewTicket() {
             const example = examples.find(
               (item) => item.id === event.target.value,
             );
-            if (example) setTicket(inputFrom(example));
+            if (example) {
+              setTicket(inputFrom(example));
+              toast.success(`Example loaded: ${example.title}`);
+            }
           }}
         >
           {examples.map((example) => (

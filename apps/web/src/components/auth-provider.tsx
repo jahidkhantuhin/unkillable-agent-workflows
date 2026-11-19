@@ -13,7 +13,7 @@ type AuthState = {
   identity: Identity | null;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<boolean>;
 };
 const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({
@@ -28,7 +28,7 @@ export function AuthProvider({
   );
   const [loading, setLoading] = useState(initialIdentity === undefined);
   const [error, setError] = useState<string | null>(null);
-  const pending = useRef<Promise<void> | null>(null);
+  const pending = useRef<Promise<boolean> | null>(null);
   const load = useRef(createSessionLoader());
   const refresh = useCallback(() => {
     if (pending.current) return pending.current;
@@ -36,9 +36,11 @@ export function AuthProvider({
       try {
         setIdentity(await load.current());
         setError(null);
+        return true;
       } catch {
         setIdentity(null);
         setError('Unable to verify session.');
+        return false;
       } finally {
         setLoading(false);
       }

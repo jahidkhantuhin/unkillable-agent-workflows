@@ -65,8 +65,17 @@ test('admin moderates safe, review and blocked uploads with the durable graph', 
   await zone.dispatchEvent('drop', { dataTransfer: invalid });
   await invalid.dispose();
   await expect(
-    page.getByRole('alert').filter({ hasText: 'Choose a .txt or .md file' }),
+    page
+      .getByRole('main')
+      .getByRole('alert')
+      .filter({ hasText: 'Choose a .txt or .md file' }),
   ).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Notifications' })
+      .getByRole('alert')
+      .filter({ hasText: 'Choose a .txt or .md file' }),
+  ).toBeInViewport();
   await expect(zone.getByText('review.txt', { exact: true })).toBeVisible();
   await zone.getByRole('button', { name: 'Remove file', exact: true }).click();
   await expect(page.getByLabel('Text content', { exact: true })).toBeEnabled();
@@ -122,9 +131,22 @@ test('admin moderates safe, review and blocked uploads with the durable graph', 
     .locator('article')
     .filter({ hasText: 'Browser review upload' });
   await expect(
-    card.getByRole('link', {
+    card.getByRole('button', {
       name: 'Download full original content before reviewing',
     }),
+  ).toBeVisible();
+  const download = page.waitForEvent('download');
+  await card
+    .getByRole('button', {
+      name: 'Download full original content before reviewing',
+    })
+    .click();
+  expect((await download).suggestedFilename()).toBe('moderation-content.txt');
+  await expect(
+    page
+      .getByRole('region', { name: 'Notifications' })
+      .getByRole('status')
+      .filter({ hasText: 'Original content download started.' }),
   ).toBeVisible();
   await expect(
     card.getByRole('button', { name: 'Approve edited draft' }),

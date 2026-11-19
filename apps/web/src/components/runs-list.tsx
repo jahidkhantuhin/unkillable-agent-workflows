@@ -11,6 +11,7 @@ import {
 import { Button } from './ui/button';
 import { useAuth } from './auth-provider';
 import { RunScenario, runTitle } from './run-scenario';
+import { useToast } from './toast-provider';
 export function RunStatus({ status }: { status: string }) {
   return (
     <span
@@ -21,6 +22,7 @@ export function RunStatus({ status }: { status: string }) {
   );
 }
 export function RunsList() {
+  const toast = useToast();
   const [runs, setRuns] = useState<RunDTO[]>([]);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
@@ -84,8 +86,11 @@ export function RunsList() {
       const body = await response.json();
       if (!response.ok)
         throw new Error(body.error?.message ?? 'Could not queue run');
-      router.push(`/runs/${runDTOSchema.parse(body).id}`);
+      const run = runDTOSchema.parse(body);
+      toast.success('Demo run created and queued.');
+      router.push(`/runs/${run.id}`);
     } catch (error) {
+      toast.error(error, 'Could not queue run');
       setError(error instanceof Error ? error.message : 'Could not queue run');
     } finally {
       setPending(false);

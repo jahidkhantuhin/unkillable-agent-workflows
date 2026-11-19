@@ -21,6 +21,8 @@ Start Docker and `pnpm dev`, sign in as admin, and use `SUPPORT_LLM_PROVIDER=moc
 
 The JSON field accepts an **edit patch**, not a replacement for all saved state. `{}` creates a branch without changing editable inputs. Unknown keys, wrong types, empty strings and overlong values are refused both in the browser and API. Editing a support draft requires a checkpoint where draft_reply has completed. Choose the checkpoint by its completed node name, rather than assuming a particular number.
 
+Validation failures now also appear in a fixed error toast, so you can see the error while the fork editor is scrolled into view. Errors remain until dismissed; successful fork creation shows a success toast on the new run. The same reusable notifications cover actions throughout the app; see [UI-FEEDBACK.md](UI-FEEDBACK.md).
+
 ## What a fork preserves and resets
 
 | Workflow           | Editable fields                               | Reused results                                              | Repeated work                                                                                                                                               |

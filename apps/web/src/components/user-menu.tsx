@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from './auth-provider';
 import { Button } from './ui/button';
+import { useToast } from './toast-provider';
 export function UserMenu() {
+  const toast = useToast();
   const { identity, loading, error: sessionError, refresh } = useAuth();
   const router = useRouter();
   const [error, setError] = useState('');
@@ -20,9 +22,11 @@ export function UserMenu() {
       });
       if (!response.ok) throw new Error('Sign out failed. Try again.');
       await refresh();
+      toast.success('Signed out successfully.');
       router.replace('/login');
       router.refresh();
     } catch {
+      toast.error('Sign out failed. Try again.');
       setError('Sign out failed. Try again.');
     } finally {
       setBusy(false);
@@ -38,7 +42,16 @@ export function UserMenu() {
         <span role="alert" className="text-xs text-muted-foreground">
           {sessionError}
         </span>
-        <Button variant="outline" onClick={() => void refresh()}>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            if (await refresh()) toast.success('Session verified.');
+            else
+              toast.error(
+                'Unable to verify session. Check the API and try again.',
+              );
+          }}
+        >
           Retry
         </Button>
       </div>

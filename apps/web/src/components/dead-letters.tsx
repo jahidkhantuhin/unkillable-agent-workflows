@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { deadLetterDTOSchema, type DeadLetterDTO } from '@unkillable/shared';
 import { Button } from './ui/button';
 import { RunScenario, runTitle } from './run-scenario';
+import { useToast } from './toast-provider';
 export function DeadLetters() {
+  const toast = useToast();
   const [letters, setLetters] = useState<DeadLetterDTO[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -59,6 +61,11 @@ export function DeadLetters() {
       );
       const body = await response.json();
       if (!response.ok) throw new Error(body.error?.message ?? 'Action failed');
+      toast.success(
+        action === 'retry'
+          ? 'Run queued for retry from its checkpoint.'
+          : 'Dead letter discarded. History is preserved.',
+      );
       if (action === 'retry') {
         router.push(`/runs/${body.runId}`);
         return;
@@ -71,6 +78,7 @@ export function DeadLetters() {
         ),
       );
     } catch (error) {
+      toast.error(error, 'Action failed');
       setError(error instanceof Error ? error.message : 'Action failed');
     } finally {
       setBusy(null);

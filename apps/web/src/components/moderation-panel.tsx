@@ -8,7 +8,9 @@ import {
   runDTOSchema,
 } from '@unkillable/shared';
 import { Button } from './ui/button';
+import { useToast } from './toast-provider';
 export function ModerationPanel() {
+  const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
   const [dragging, setDragging] = useState(false);
@@ -16,20 +18,24 @@ export function ModerationPanel() {
     if (busy || !selected.length) return;
     if (selected.length !== 1) {
       setError('Choose one text file at a time.');
+      toast.error('Choose one text file at a time.');
       return;
     }
     const candidate = selected[0];
     if (!/\.(txt|md)$/i.test(candidate.name)) {
       setError('Choose a .txt or .md file saved as UTF-8 text.');
+      toast.error('Choose a .txt or .md file saved as UTF-8 text.');
       return;
     }
     if (!candidate.size || candidate.size > maxContentBytes) {
       setError('Provide a nonempty text file up to 10 MiB.');
+      toast.error('Provide a nonempty text file up to 10 MiB.');
       return;
     }
     if (fileInput.current) fileInput.current.value = '';
     setFile(candidate);
     setError('');
+    toast.success(`Selected ${candidate.name}. Ready to upload.`);
   }
   function clearFile() {
     setFile(null);
@@ -97,11 +103,13 @@ export function ModerationPanel() {
       const body = await r.json();
       if (!r.ok) throw new Error(body.error?.message ?? 'Upload failed');
       setCreated(runDTOSchema.parse(body).id);
+      toast.success('Moderation submitted and queued.');
       setTitle('');
       setText('');
       clearFile();
       await refresh();
     } catch (e) {
+      toast.error(e, 'Upload failed');
       setError(e instanceof Error ? e.message : 'Upload failed');
     } finally {
       setBusy(false);
@@ -152,6 +160,7 @@ export function ModerationPanel() {
                 clearFile();
                 setTitle(label);
                 setText(content);
+                toast.success(`${label} loaded. Ready to submit.`);
               }}
             >
               {label}
@@ -273,7 +282,10 @@ export function ModerationPanel() {
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={clearFile}
+                  onClick={() => {
+                    clearFile();
+                    toast.success('File removed. You can edit the text again.');
+                  }}
                   className="shrink-0 cursor-pointer text-xs font-medium underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Remove file

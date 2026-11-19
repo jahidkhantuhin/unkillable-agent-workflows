@@ -9,10 +9,22 @@ test('admin dry-runs and activates a policy, observes auto approval and analytic
     page.getByText('Active version 0', { exact: false }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Load example rules' }).click();
+  const notifications = page.getByRole('region', {
+    name: 'Notifications',
+    exact: true,
+  });
+  await expect(
+    notifications
+      .getByRole('status')
+      .filter({ hasText: 'Example rules loaded' }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Dry-run past decisions' }).click();
   await expect(
     page.getByRole('status', { name: 'Policy update' }),
   ).toContainText('No run or policy was changed');
+  await expect(
+    notifications.getByRole('status').filter({ hasText: 'Dry-run complete.' }),
+  ).toBeVisible();
   await expect(
     page.getByText('Active version 0', { exact: false }),
   ).toBeVisible();
@@ -20,6 +32,11 @@ test('admin dry-runs and activates a policy, observes auto approval and analytic
   await expect(
     page.getByRole('status', { name: 'Policy update' }),
   ).toContainText('New version activated');
+  await expect(
+    notifications
+      .getByRole('status')
+      .filter({ hasText: 'New policy version activated.' }),
+  ).toBeVisible();
   try {
     await page.screenshot({
       path: 'screenshots/step-11-policies.png',

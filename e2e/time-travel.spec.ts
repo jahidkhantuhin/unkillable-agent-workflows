@@ -39,6 +39,18 @@ test('inspect a draft diff, validate edits and fork into a new human approval', 
     .fill('{"approvalAction":"approve"}');
   await panel.getByRole('button', { name: 'Create fork', exact: true }).click();
   await expect(panel.getByRole('alert')).toContainText('Unrecognized key');
+  const notifications = page.getByRole('region', {
+    name: 'Notifications',
+    exact: true,
+  });
+  const validationToast = notifications
+    .getByRole('alert')
+    .filter({ hasText: 'approvalAction' });
+  await expect(validationToast).toBeInViewport();
+  await validationToast
+    .getByRole('button', { name: 'Dismiss notification' })
+    .click();
+  await expect(validationToast).toHaveCount(0);
   await expect(page).toHaveURL(parentURL);
   await panel.getByLabel('State edits (JSON)', { exact: true }).fill(
     JSON.stringify({
@@ -49,6 +61,9 @@ test('inspect a draft diff, validate edits and fork into a new human approval', 
   );
   await panel.getByRole('button', { name: 'Create fork', exact: true }).click();
   await expect(page).not.toHaveURL(parentURL);
+  await expect(
+    notifications.getByRole('status').filter({ hasText: 'Fork created.' }),
+  ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Time travel child', exact: true }),
   ).toBeVisible();

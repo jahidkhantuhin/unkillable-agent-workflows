@@ -12,6 +12,7 @@ import {
   type RunDTO,
 } from '@unkillable/shared';
 import { useAuth } from './auth-provider';
+import { useToast } from './toast-provider';
 const button =
   'cursor-pointer rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40';
 export function ChaosBanner() {
@@ -62,6 +63,7 @@ export function RunChaosActions({ run }: { run: RunDTO }) {
   return identity?.role === 'admin' ? <ChaosPanel run={run} /> : null;
 }
 export function ChaosPanel({ run }: { run?: RunDTO }) {
+  const toast = useToast();
   const [status, setStatus] = useState<ChaosStatus | null>(null),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -135,16 +137,18 @@ export function ChaosPanel({ run }: { run?: RunDTO }) {
         setStatus(chaosStatusSchema.parse(data));
         window.dispatchEvent(new Event('chaos-mode-changed'));
       }
-      setNotice(
+      const message =
         path === 'toggle'
           ? data.active
             ? 'Fault injection is active.'
             : 'Fault injection paused. Pending faults cleared and model simulation reset. Recovery of already-triggered actions continues.'
           : path === 'kill'
             ? 'Crash requested. Watch the process status recover.'
-            : 'Control saved. Temporary settings expire after five minutes.',
-      );
+            : 'Control saved. Temporary settings expire after five minutes.';
+      setNotice(message);
+      toast.success(message);
     } catch (error) {
+      toast.error(error, 'Request failed');
       setNotice(error instanceof Error ? error.message : 'Request failed');
     } finally {
       setBusy(false);

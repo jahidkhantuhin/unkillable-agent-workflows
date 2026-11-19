@@ -1,6 +1,8 @@
 'use client';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/toast-provider';
 export default function ErrorPage({ reset }: { reset: () => void }) {
+  const toast = useToast();
   return (
     <div role="alert" className="rounded-2xl border border-border p-8">
       <h1 className="text-2xl font-semibold">
@@ -10,7 +12,14 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
         We could not verify your session. Check that the API is running and try
         again.
       </p>
-      <Button onClick={reset}>Try again</Button>
+      <Button
+        onClick={() => {
+          toast.success('Workspace reload requested.');
+          reset();
+        }}
+      >
+        Try again
+      </Button>
     </div>
   );
 }
