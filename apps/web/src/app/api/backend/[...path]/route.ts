@@ -14,7 +14,9 @@ async function forward(
   const pathname = path.join('/');
   const isRun =
     pathname === 'runs' ||
-    /^runs\/[0-9a-f-]{36}(\/(events|reliability|graph))?$/.test(pathname);
+    /^runs\/[0-9a-f-]{36}(\/(events|reliability|graph|diff|forks|checkpoints)(\/[0-9a-f-]{36})?)?$/.test(
+      pathname,
+    );
   const isDeadLetter =
     pathname === 'dead-letters' ||
     /^dead-letters\/[0-9a-f-]{36}(\/(retry|discard))?$/.test(pathname);
@@ -69,7 +71,10 @@ async function forward(
                     (/\/(retry|discard)$/.test(pathname) ? 'POST' : 'GET')
                   : isRun
                     ? request.method !== 'GET' &&
-                      !(pathname === 'runs' && request.method === 'POST')
+                      !(
+                        (pathname === 'runs' || pathname.endsWith('/forks')) &&
+                        request.method === 'POST'
+                      )
                     : (request.method === 'GET') !== (pathname === 'auth/me')
   )
     return NextResponse.json(

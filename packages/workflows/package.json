@@ -20,6 +20,8 @@
   },
   "devDependencies": {},
   "exports": {
+    "./history": "./src/history.ts",
+    "./fork": "./src/fork.ts",
     "./moderation": "./src/moderation.ts",
     "./moderation-runtime": "./src/moderation-runtime.ts",
     "./support": "./src/support.ts",

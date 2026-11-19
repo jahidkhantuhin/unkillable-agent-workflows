@@ -41,6 +41,34 @@ export interface RunStore {
   events(id: string, after: number, limit?: number): Promise<RunEvent[]>;
 }
 export class RunRepository implements RunStore {
+  async children(id: string) {
+    return (
+      await this.runs
+        .find({ parentRunId: id })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .toArray()
+    ).map((value) => runSchema.parse(value));
+  }
+  async createFork(
+    actor: string,
+    parent: Run,
+    checkpointId: string,
+    state: Record<string, unknown>,
+    asNode: string,
+  ) {
+    return this.createWorkflow(
+      actor,
+      state,
+      parent.workflowId,
+      parent.workflowVersion,
+      {
+        parentRunId: parent.id,
+        forkCheckpointId: checkpointId,
+        forkAsNode: asNode,
+      },
+    );
+  }
   moderation() {
     return new ModerationRepository(this.client, this.db);
   }
@@ -108,9 +136,15 @@ export class RunRepository implements RunStore {
     input: Record<string, unknown>,
     workflowId: string,
     workflowVersion: number,
+    fork: {
+      parentRunId?: string;
+      forkCheckpointId?: string;
+      forkAsNode?: string;
+    } = {},
   ) {
     const now = new Date();
     const run = runSchema.parse({
+      ...fork,
       id: randomUUID(),
       createdAt: now,
       updatedAt: now,
@@ -167,6 +201,21 @@ export class RunRepository implements RunStore {
             .insertOne({ ...ticket, _id: ticket.id }, { session });
         }
         await this.log.insertOne({ ...event, _id: event.id }, { session });
+        if (fork.parentRunId)
+          await this.appendInSession(
+            fork.parentRunId,
+            {
+              type: 'CUSTOM',
+              name: 'run.forked',
+              value: {
+                childRunId: run.id,
+                checkpointId: fork.forkCheckpointId,
+                actorId: userId,
+              },
+            },
+            { key: `fork:${run.id}`, allowTerminal: true },
+            session,
+          );
       });
     } finally {
       await session.endSession();

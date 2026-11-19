@@ -1,13 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 test('admin dry-runs and activates a policy, observes auto approval and analytics', async ({
   page,
 }) => {
-  await page.goto('/login');
-  await page.getByLabel('Email', { exact: true }).fill('step8@example.test');
-  await page
-    .getByLabel('Password', { exact: true })
-    .fill('step8-local-test-password');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/runs');
   await expect(page).toHaveURL(/\/runs$/);
   await page.getByRole('link', { name: /Policies/ }).click();
   await expect(

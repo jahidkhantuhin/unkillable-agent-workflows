@@ -8,7 +8,7 @@ The platform targets five goals: crash durability, exactly-once side effects, hu
 
 Below 1024px, the shared app shell uses a compact top bar with the app title, theme control and collapsible navigation button. Status/account controls live inside that menu; navigation or Escape closes it. At 1024px and above, the desktop sidebar/header are shown.
 
-Steps 1–12 provide durable execution, human approval, a support ticket router, async content moderation, reverse-order compensation, a live React Flow graph, an admin-only development Chaos panel, a seeded service-backed chaos suite, and versioned approval policies with reviewer analytics. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only; moderation publication/notifications are local database records. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The chaos harness forces MockLLM and isolated local services; measured results and limitations are published in [docs/CHAOS-REPORT.md](docs/CHAOS-REPORT.md).
+Steps 1–13 provide durable execution, human approval, a support ticket router, async content moderation, reverse-order compensation, a live React Flow graph, an admin-only development Chaos panel, a seeded service-backed chaos suite, versioned approval policies with reviewer analytics, and checkpoint time travel with independent forks. Runs survive worker restarts and expose effect receipts. Support effects use fake payments and local Mailpit only; moderation publication/notifications are local database records. MockLLM is the code default; set SUPPORT_LLM_PROVIDER=mock for predictable local testing if your copied environment selects Gemini. The chaos harness forces MockLLM and isolated local services; measured results and limitations are published in [docs/CHAOS-REPORT.md](docs/CHAOS-REPORT.md).
 
 ## Architecture
 
@@ -256,6 +256,12 @@ See [docs/STEP-3.md](docs/STEP-3.md) for boundaries and verification. Shared Nod
 Validation results are available on `res.locals.body`, `.query`, or `.params`, avoiding mutation of Express 5 request getters. Health returns HTTP 503 with per-service flags when a dependency fails. Shutdown stops accepting work, closes connections, and has a ten-second deadline.
 
 The worker allows up to twenty seconds for graceful shutdown; the API retains its ten-second deadline.
+
+## Time travel and fork (Step 13)
+
+Open a run's **Time travel** panel to browse checkpoint history, inspect saved state and compare two checkpoints. Approvers/admins can create a child with validated edits; moderation forks require admin. Titles and parent/child links identify related runs.
+
+A fork gets fresh run/business IDs and effect scopes. Pure results can carry over, but approvals and effect stages reset to a safe point. Support forks always require human review; moderation forks rescreen the original immutable file. Forking does not undo the parent's effects or reopen its failed run. Approving both branches can create one additional local effect per branch. No new environment variables or dependencies are needed; CHAOS_ENABLED can remain false. See [STEP-13.md](docs/STEP-13.md) for three focused tests, allowed edits, API and safety rules.
 
 ## Development checks
 

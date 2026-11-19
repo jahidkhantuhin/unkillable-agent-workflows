@@ -21,6 +21,7 @@ const result = spawnSync(
     'apps/api/src/chaos.integration.test.ts',
     'apps/api/src/policies.integration.test.ts',
     'apps/api/src/moderation.integration.test.ts',
+    'apps/api/src/time-travel.integration.test.ts',
   ],
   {
     stdio: 'inherit',

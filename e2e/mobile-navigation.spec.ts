@@ -1,13 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 test('navigation fits mobile/tablet widths and switches to the sidebar at 1024px', async ({
   page,
 }) => {
-  await page.goto('/login');
-  await page.getByLabel('Email', { exact: true }).fill('step8@example.test');
-  await page
-    .getByLabel('Password', { exact: true })
-    .fill('step8-local-test-password');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/runs');
   await expect(page).toHaveURL(/\/runs$/);
   await page.goto('/moderation');
   const header = page.getByTestId('mobile-header');

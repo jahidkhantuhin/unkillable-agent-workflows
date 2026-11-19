@@ -3,6 +3,7 @@ import { Redis } from 'ioredis';
 import pino from 'pino';
 import { configSchema } from './config';
 import { createApp } from './app';
+import { TimeTravelService } from './services/time-travel';
 import { bootstrapIndexes } from './repositories/indexes';
 import { MongoMembershipRepository } from './repositories/documents';
 import { createMongoAuth } from './auth';
@@ -75,6 +76,12 @@ const app = createApp(
     runService.repository,
     config.RUN_QUEUE_NAME,
     process.env,
+  ),
+  undefined,
+  new TimeTravelService(
+    runService,
+    config.MONGODB_URI,
+    mongo.db().databaseName,
   ),
 );
 let stopChaos = async () => {};

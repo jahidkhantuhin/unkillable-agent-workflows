@@ -145,7 +145,7 @@ async function createDemoExecutor(
           configurable: { thread_id: run.id },
           durability: 'sync' as const,
         };
-        const saved = await runtime.saver.getTuple(config);
+        let saved = await runtime.saver.getTuple(config);
         await repository.append(
           run.id,
           { type: 'RUN_STARTED' },
@@ -156,6 +156,28 @@ async function createDemoExecutor(
             expectedExecution: run.execution,
           },
         );
+        if (!saved && run.parentRunId && run.forkAsNode) {
+          await runtime.graph.updateState(
+            config,
+            demoStateSchema.parse(run.state),
+            run.forkAsNode,
+          );
+          saved = await runtime.saver.getTuple(config);
+        }
+        if (run.parentRunId && saved)
+          await repository.append(
+            run.id,
+            {
+              type: 'CUSTOM',
+              name: 'fork.initialized',
+              value: {
+                parentRunId: run.parentRunId,
+                checkpointId: run.forkCheckpointId,
+                asNode: run.forkAsNode,
+              },
+            },
+            { key: 'fork:initialized' },
+          );
         if (saved) {
           const state = demoStateSchema.safeParse(
             saved.checkpoint.channel_values,

@@ -1,13 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 test('ticket graph pulses at approval and rebuilds after reload', async ({
   page,
 }) => {
-  await page.goto('/login');
-  await page.getByLabel('Email', { exact: true }).fill('step8@example.test');
-  await page
-    .getByLabel('Password', { exact: true })
-    .fill('step8-local-test-password');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/runs');
   await expect(page).toHaveURL(/\/runs$/);
   await page.getByRole('link', { name: 'New ticket', exact: true }).click();
   await page

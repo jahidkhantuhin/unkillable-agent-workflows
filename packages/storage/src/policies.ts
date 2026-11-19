@@ -183,7 +183,9 @@ export class PolicyRepository {
       action: 'support_reply',
       amountCents: refundCents,
       riskTier:
-        refundCents > 0 || parsed.classification.confidence < 0.8
+        !!run.parentRunId ||
+        refundCents > 0 ||
+        parsed.classification.confidence < 0.8
           ? 'high'
           : 'low',
       confidence: parsed.classification.confidence,

@@ -11,6 +11,7 @@ import { advanceRun, mergeEvents } from '../lib/run-model';
 import { observeRun } from '../lib/run-stream';
 import { RunChaosActions } from './chaos-panel';
 import { PolicyTrace } from './policy-trace';
+import { TimeTravelPanel } from './time-travel-panel';
 function label(event: RunEvent) {
   if (event.type === 'STEP_STARTED') return `${event.stepName} started`;
   if (event.type === 'STEP_FINISHED') return `${event.stepName} checkpointed`;
@@ -86,6 +87,7 @@ export function RunDetail({ initial }: { initial: RunDTO }) {
         <RunStatus status={run.status} />
       </div>
       <WorkflowGraph run={run} events={events} />
+      <TimeTravelPanel key={run.id} run={run} />
       {moderation && (
         <section className="mt-6 rounded-2xl border border-border p-6">
           <h2 className="font-semibold">Moderation decision</h2>

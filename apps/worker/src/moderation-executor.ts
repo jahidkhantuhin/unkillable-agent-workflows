@@ -120,7 +120,7 @@ export async function createModerationExecutor(
         durability: 'sync' as const,
       };
       try {
-        const saved = await runtime.saver.getTuple(config);
+        let saved = await runtime.saver.getTuple(config);
         await repository.append(
           id,
           { type: 'RUN_STARTED' },
@@ -131,6 +131,28 @@ export async function createModerationExecutor(
             expectedExecution: run.execution,
           },
         );
+        if (!saved && run.parentRunId && run.forkAsNode) {
+          await runtime.graph.updateState(
+            config,
+            moderationStateSchema.parse(run.state),
+            run.forkAsNode,
+          );
+          saved = await runtime.saver.getTuple(config);
+        }
+        if (run.parentRunId && saved)
+          await repository.append(
+            id,
+            {
+              type: 'CUSTOM',
+              name: 'fork.initialized',
+              value: {
+                parentRunId: run.parentRunId,
+                checkpointId: run.forkCheckpointId,
+                asNode: run.forkAsNode,
+              },
+            },
+            { key: 'fork:initialized' },
+          );
         if (saved) {
           const parsed = moderationStateSchema.safeParse(
             saved.checkpoint.channel_values,

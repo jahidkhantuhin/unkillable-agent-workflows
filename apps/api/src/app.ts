@@ -21,6 +21,8 @@ import { PolicyService } from './services/policies';
 import { policyRoutes, analyticsRoutes } from './routes/policies';
 import { moderationRoutes } from './routes/moderation';
 import { ModerationService } from './services/moderation';
+import { timeTravelRoutes } from './routes/time-travel';
+import type { TimeTravelService } from './services/time-travel';
 export function createApp(
   deps: HealthDependencies,
   origins = ['http://localhost:3000'],
@@ -29,6 +31,7 @@ export function createApp(
   runService?: RunService,
   chaosService?: ChaosService,
   moderationService?: ModerationService,
+  timeTravelService?: TimeTravelService,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -67,6 +70,11 @@ export function createApp(
   app.use(healthRoutes(deps));
   if (authService) app.use('/auth', authRoutes(authService, origins));
   if (authService && runService) {
+    if (timeTravelService)
+      app.use(
+        '/runs',
+        timeTravelRoutes(timeTravelService, authService, origins),
+      );
     app.use(
       '/moderation',
       moderationRoutes(

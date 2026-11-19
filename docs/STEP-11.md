@@ -29,13 +29,13 @@ Version history displays the policy/version as its heading, followed by a readab
 
 The JSON editor validates a small declarative rule language; it does not execute code. Rules are ordered: the first matching rule wins, otherwise fallback applies. All conditions in a rule must match. An empty condition matches everything. Each rule has a unique id, explanation, conditions and outcome. Allowed conditions:
 
-| Condition                       | Meaning                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------ |
-| riskTier                        | high for a proposed refund or confidence below 0.8; low otherwise              |
-| minAmountCents / maxAmountCents | Inclusive bounds on the **proposed refund**, not the original charge           |
-| minConfidence                   | Inclusive lower bound on the validated classifier score                        |
-| customerTier                    | standard or vip; supplied by the signed-in demo operator, defaults to standard |
-| hoursUtc                        | List of allowed hours 0–23, using the run's creation hour in UTC               |
+| Condition                       | Meaning                                                                            |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| riskTier                        | high for a proposed refund, confidence below 0.8, or a Step 13 fork; low otherwise |
+| minAmountCents / maxAmountCents | Inclusive bounds on the **proposed refund**, not the original charge               |
+| minConfidence                   | Inclusive lower bound on the validated classifier score                            |
+| customerTier                    | standard or vip; supplied by the signed-in demo operator, defaults to standard     |
+| hoursUtc                        | List of allowed hours 0–23, using the run's creation hour in UTC                   |
 
 The evaluated action is `support_reply`: one approval decision covers the support workflow's refund/reply/close bundle. This does not replace retrieved support eligibility policies; those still determine whether any refund is eligible. Customer tier is synthetic demo input, not a verified CRM entitlement. In a real integration it would come from a trusted customer record. UTC creation time stays stable across queue delays/restarts; it is not the browser's local hour or time when the review happens.
 

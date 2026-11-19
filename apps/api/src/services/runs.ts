@@ -14,6 +14,27 @@ export interface RunQueue {
   ): Promise<unknown>;
 }
 export class RunService {
+  async createFork(
+    actor: string,
+    parent: Awaited<ReturnType<RunService['get']>>,
+    checkpointId: string,
+    state: Record<string, unknown>,
+    asNode: string,
+  ) {
+    const run = await this.repository.createFork(
+      actor,
+      parent,
+      checkpointId,
+      state,
+      asNode,
+    );
+    try {
+      await this.dispatch(run.id);
+    } catch (error) {
+      this.warn(error);
+    }
+    return run;
+  }
   private recovering = false;
   constructor(
     readonly repository: RunRepository,

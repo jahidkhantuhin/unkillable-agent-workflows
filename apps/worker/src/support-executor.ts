@@ -131,7 +131,7 @@ export async function createSupportExecutor(
         durability: 'sync' as const,
       };
       try {
-        const saved = await runtime.saver.getTuple(config);
+        let saved = await runtime.saver.getTuple(config);
         const approval = await approvals.forRun(id);
         await repository.append(
           id,
@@ -143,6 +143,28 @@ export async function createSupportExecutor(
             expectedExecution: run.execution,
           },
         );
+        if (!saved && run.parentRunId && run.forkAsNode) {
+          await runtime.graph.updateState(
+            config,
+            supportStateSchema.parse(run.state),
+            run.forkAsNode,
+          );
+          saved = await runtime.saver.getTuple(config);
+        }
+        if (run.parentRunId && saved)
+          await repository.append(
+            id,
+            {
+              type: 'CUSTOM',
+              name: 'fork.initialized',
+              value: {
+                parentRunId: run.parentRunId,
+                checkpointId: run.forkCheckpointId,
+                asNode: run.forkAsNode,
+              },
+            },
+            { key: 'fork:initialized' },
+          );
         if (saved) {
           const state = supportStateSchema.safeParse(
             saved.checkpoint.channel_values,

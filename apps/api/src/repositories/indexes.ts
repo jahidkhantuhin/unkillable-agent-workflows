@@ -14,6 +14,7 @@ export const collectionIndexes: Record<string, IndexDescription[]> = {
   ],
   workflowDefinitions: [{ key: { name: 1, version: 1 }, unique: true }],
   runs: [
+    { key: { parentRunId: 1, createdAt: -1 } },
     { key: { status: 1, createdAt: -1 } },
     { key: { createdBy: 1, createdAt: -1 } },
   ],

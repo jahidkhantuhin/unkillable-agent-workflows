@@ -1,13 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 test('admin moderates safe, review and blocked uploads with the durable graph', async ({
   page,
 }) => {
-  await page.goto('/login');
-  await page.getByLabel('Email', { exact: true }).fill('step8@example.test');
-  await page
-    .getByLabel('Password', { exact: true })
-    .fill('step8-local-test-password');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/runs');
   await expect(page).toHaveURL(/\/runs$/);
   await page.getByRole('link', { name: /Moderation/ }).click();
   await page.getByRole('button', { name: 'Safe example', exact: true }).click();
@@ -27,11 +22,14 @@ test('admin moderates safe, review and blocked uploads with the durable graph', 
     { timeout: 30000 },
   );
   await expect
-    .poll(async () => {
-      const r = await page.request.get(`/api/backend${safeURL}/reliability`);
-      const body = await r.json();
-      return body.deliveries?.length;
-    })
+    .poll(
+      async () => {
+        const r = await page.request.get(`/api/backend${safeURL}/reliability`);
+        const body = await r.json();
+        return body.deliveries?.length;
+      },
+      { timeout: 15000 },
+    )
     .toBe(1);
   await page.goto('/moderation');
   await page
