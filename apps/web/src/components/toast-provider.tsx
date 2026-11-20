@@ -9,11 +9,20 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { CircleCheck, CircleAlert, X } from 'lucide-react';
-export type Toast = { id: number; tone: 'success' | 'error'; message: string };
+import { CircleCheck, CircleAlert, Bell, X } from 'lucide-react';
+import Link from 'next/link';
+type ToastAction = { href: string; label: string };
+export type Toast = {
+  id: number;
+  tone: 'success' | 'error' | 'notice';
+  message: string;
+  action?: ToastAction;
+};
 type ToastActions = {
   success: (message: string) => void;
   error: (error: unknown, fallback?: string) => void;
+  notice: (message: string, action: ToastAction) => void;
+  clearNotices: () => void;
 };
 const ToastContext = createContext<ToastActions | null>(null);
 export function errorMessage(
@@ -55,8 +64,9 @@ function ToastItem({
     const timer = setTimeout(() => dismiss(toast.id), 6000);
     return () => clearTimeout(timer);
   }, [toast, dismiss, paused]);
-  const success = toast.tone === 'success';
-  const Icon = success ? CircleCheck : CircleAlert;
+  const success = toast.tone !== 'error';
+  const notice = toast.tone === 'notice';
+  const Icon = notice ? Bell : success ? CircleCheck : CircleAlert;
   return (
     <li
       data-testid="toast"
@@ -69,19 +79,32 @@ function ToastItem({
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
       }}
-      className={`pointer-events-auto flex min-w-0 items-start gap-3 rounded-xl border bg-background p-4 shadow-xl ${success ? 'border-emerald-500/60' : 'border-red-500/60'}`}
+      className={`pointer-events-auto flex min-w-0 items-start gap-3 rounded-xl border bg-background p-4 shadow-xl ${notice ? 'border-amber-500/60' : success ? 'border-emerald-500/60' : 'border-red-500/60'}`}
     >
       <Icon
         aria-hidden="true"
-        className={`mt-0.5 size-5 shrink-0 ${success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
+        className={`mt-0.5 size-5 shrink-0 ${notice ? 'text-amber-600 dark:text-amber-400' : success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
       />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">
-          {success ? 'Success' : 'Action failed'}
+          {toast.tone === 'notice'
+            ? 'Approval needs attention'
+            : success
+              ? 'Success'
+              : 'Action failed'}
         </p>
         <p className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words text-sm text-foreground">
           {toast.message}
         </p>
+        {toast.action && (
+          <Link
+            href={toast.action.href}
+            onClick={() => dismiss(toast.id)}
+            className="mt-2 inline-block text-sm font-medium underline"
+          >
+            {toast.action.label}
+          </Link>
+        )}
       </div>
       <button
         type="button"
@@ -101,19 +124,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (id: number) => setToasts((current) => current.filter((t) => t.id !== id)),
     [],
   );
-  const show = useCallback((tone: Toast['tone'], message: string) => {
-    const id = ++nextId.current;
-    setToasts((current) =>
-      [
-        ...current.filter((t) => t.message !== message || t.tone !== tone),
-        { id, tone, message },
-      ].slice(-4),
-    );
-  }, []);
+  const show = useCallback(
+    (tone: Toast['tone'], message: string, action?: ToastAction) => {
+      const id = ++nextId.current;
+      setToasts((current) =>
+        [
+          ...current.filter((t) => t.message !== message || t.tone !== tone),
+          { id, tone, message, action },
+        ].slice(-4),
+      );
+    },
+    [],
+  );
   const actions = useMemo<ToastActions>(
     () => ({
       success: (message) => show('success', message),
       error: (error, fallback) => show('error', errorMessage(error, fallback)),
+      notice: (message, action) => show('notice', message, action),
+      clearNotices: () =>
+        setToasts((current) => current.filter((t) => t.tone !== 'notice')),
     }),
     [show],
   );

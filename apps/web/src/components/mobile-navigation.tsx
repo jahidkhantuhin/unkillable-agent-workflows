@@ -7,6 +7,7 @@ import { Navigation } from './navigation';
 import { ThemeToggle } from './providers';
 import { ApiStatus } from './status';
 import { UserMenu } from './user-menu';
+import { ApprovalBell } from './approval-bell';
 export function MobileNavigation() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -53,6 +54,7 @@ export function MobileNavigation() {
         </Link>
         <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
+          <ApprovalBell />
           <button
             ref={toggle}
             type="button"

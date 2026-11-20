@@ -9,6 +9,7 @@ import { serverIdentity } from '@/lib/server-auth';
 import './globals.css';
 import { ChaosBanner } from '@/components/chaos-panel';
 import { MobileNavigation } from '@/components/mobile-navigation';
+import { ApprovalBell } from '@/components/approval-bell';
 export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
@@ -63,6 +64,7 @@ export default async function RootLayout({
                 <div className="flex min-w-0 flex-wrap items-center gap-3">
                   <ApiStatus />
                   <ThemeToggle />
+                  <ApprovalBell />
                   <UserMenu />
                 </div>
               </header>

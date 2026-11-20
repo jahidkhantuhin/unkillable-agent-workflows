@@ -459,3 +459,17 @@ Final verification after the mobile table-spacing follow-up:
 - Final screenshots `screenshots/step-15-sla-mobile.png` and `screenshots/step-15-run-metrics.png` were inspected. The optional collector started solely for verification was stopped afterward; normal MongoDB/Redis/Mailpit services were left intact.
 
 Step 15 is complete. Waiting for the user's review and authorization before Step 16.
+
+### Step 15 follow-up: Global approval notification bell
+
+Added a shared approval-alert provider and a bell in desktop/mobile headers, available across app pages for signed-in admins and approvers. It polls the existing authenticated inbox every five seconds and on window focus, sharing one request loop between responsive header placements. Client filtering excludes resolved/expired requests, moderation for non-admins and requests this reviewer already reviewed. Badge counts remain until action is no longer needed; opening the list acknowledges attention without resolving anything.
+
+New pending requests, persisted reminders and role-targeted escalations trigger a brief one-shot shake plus an amber/orange halo. Opening the bell stops attention animation, and reduced-motion preferences disable all bell motion. Subsequent unchanged polls and navigation do not repeat the same alert. The dropdown provides titles, live remaining time and Review now links to the correct approval card, with Escape/outside dismissal and focus return. Initial loading highlights existing work without replaying a toast for every old item. New events generate one actionable summary toast per poll through the reusable toast provider, now extended with a notice tone and link action. Sign-out/identity changes clear personal approval notices; polling failures clear stale actionable entries and expose an unavailable message.
+
+README and STEP-15.md document behavior, targeted escalation, poll latency, acknowledgement vs decision, mobile/reduced-motion testing and the absence of browser-closed push alerts. No backend routes, permissions, environment variables, dependencies, private .env or Step 16 implementation were changed.
+
+Verification: `pnpm check` passed lint/format, all workspace typechecks, **132 unit/component tests** (73 integration cases skipped in that command) and production build. Two new rule tests cover reviewer eligibility, already-reviewed/expired/resolved filtering, moderation restrictions, stable event keys and escalation targeting. Browser results follow below. The new bell case passed its desktop pending/reminder/escalation flow, animation acknowledgement, persistent pending count, Review now navigation, resolved-list clearing, 320px viewport and reduced-motion assertions. `screenshots/step-15-approval-bell-mobile.png` was visually inspected with readable dropdown content and a visible orange count badge, without page overflow.
+
+Backend integration suites were not rerun for this frontend-only follow-up; the browser suite uses isolated local services and mock providers. No live customer/model/payment/email/messaging effects or Git commands were run.
+
+Final browser verification: `pnpm test:e2e` passed **all 11 tests**, reported **1.9 minutes**, including the new global bell and existing navigation, SLA, signed approval/PWA, moderation, analytics, forks, chaos and action-feedback flows. Final `pnpm lint` passed after the documentation update; progress formatting was checked afterward. Step 15 follow-up is complete; Step 16 remains unstarted.

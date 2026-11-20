@@ -47,3 +47,40 @@ button,
 a {
   -webkit-tap-highlight-color: transparent;
 }
+
+@keyframes approval-bell-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20%,
+  60% {
+    transform: rotate(15deg);
+  }
+  40%,
+  80% {
+    transform: rotate(-12deg);
+  }
+}
+@keyframes approval-bell-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgb(245 158 11 / 10%);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(245 158 11 / 22%);
+  }
+}
+.approval-bell-ring {
+  transform-origin: top center;
+  animation: approval-bell-shake 0.8s ease-in-out 1;
+}
+.approval-bell-halo {
+  animation: approval-bell-glow 2.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .approval-bell-ring,
+  .approval-bell-halo {
+    animation: none;
+  }
+}

@@ -6,6 +6,7 @@ import { AuthProvider } from './auth-provider';
 import type { Identity } from '@unkillable/shared';
 import { ToastProvider, useToast } from './toast-provider';
 import { PwaRegistration } from './pwa';
+import { ApprovalAlertsProvider } from './approval-bell';
 export function Providers({
   children,
   initialIdentity,
@@ -18,7 +19,7 @@ export function Providers({
       <ToastProvider>
         <PwaRegistration />
         <AuthProvider initialIdentity={initialIdentity}>
-          {children}
+          <ApprovalAlertsProvider>{children}</ApprovalAlertsProvider>
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
