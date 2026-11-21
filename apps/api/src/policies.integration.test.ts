@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { beforeAll, afterAll, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'vitest';
 import { MongoClient, ObjectId } from 'mongodb';
 import request from 'supertest';
 import { memoryAdapter } from '@better-auth/memory-adapter';
@@ -38,8 +38,17 @@ describe.skipIf(!uri)('versioned approval policies', () => {
     await client.connect();
   });
   afterAll(async () => {
-    for (const name of databases) await client.db(name).dropDatabase();
-    await client.close();
+    try {
+      for (const name of databases) {
+        if (!/^unkillable_test_[a-f0-9]{32}$/.test(name))
+          throw new Error(
+            'Refusing cleanup outside the isolated policy-test databases',
+          );
+        await client.db(name).dropDatabase();
+      }
+    } finally {
+      await client.close();
+    }
   });
   async function setup() {
     const db = client.db(`unkillable_test_${randomUUID().replaceAll('-', '')}`);
@@ -99,6 +108,12 @@ describe.skipIf(!uri)('versioned approval policies', () => {
         .send(body);
     return { db, runs, app, admin, approver, viewer, post };
   }
+  let fixture: Awaited<ReturnType<typeof setup>>;
+  // Index creation and real user/password provisioning are fixture work, not
+  // policy behavior. Keep them outside each test's assertion timeout.
+  beforeEach(async () => {
+    fixture = await setup();
+  }, 30000);
   const sample: ApprovalPolicy = {
     name: 'Test rules',
     rules: [
@@ -118,7 +133,7 @@ describe.skipIf(!uri)('versioned approval policies', () => {
     fallback: 'require_approval',
   };
   it('enforces roles/origin, saves immutable versions, rejects stale updates and dry-runs without writes', async () => {
-    const { db, runs, app, admin, approver, viewer, post } = await setup();
+    const { db, runs, app, admin, approver, viewer, post } = fixture;
     expect((await request(app).get('/policies')).status).toBe(401);
     for (const actor of [approver, viewer]) {
       expect(
@@ -199,7 +214,7 @@ describe.skipIf(!uri)('versioned approval policies', () => {
     expect(await runs.policies().history()).toHaveLength(1);
   });
   it('runs safe replies automatically, pins decisions, and requires two distinct reviews of the same edited content', async () => {
-    const { runs, db, admin, approver, post } = await setup();
+    const { runs, db, admin, approver, post } = fixture;
     await runs.policies().save(0, sample, admin.id);
     const delivered: string[] = [];
     const deps = supportDependencies(
@@ -321,7 +336,7 @@ describe.skipIf(!uri)('versioned approval policies', () => {
     }
   }, 60000);
   it('serializes racing reviews and permits rejection before the second approval without effects', async () => {
-    const { db, runs, admin, approver, post } = await setup();
+    const { db, runs, admin, approver, post } = fixture;
     await runs
       .policies()
       .save(
@@ -388,7 +403,7 @@ describe.skipIf(!uri)('versioned approval policies', () => {
     }
   }, 60000);
   it('computes exact analytics denominators, median approval time and UTC daily shares', async () => {
-    const { db, runs, admin } = await setup();
+    const { db, runs, admin } = fixture;
     const inputs = {
       action: 'support_reply' as const,
       riskTier: 'low' as const,

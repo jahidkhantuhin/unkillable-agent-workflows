@@ -124,7 +124,7 @@ pnpm test:e2e
 pnpm chaos --runs 50 --seed 20261116 --report-dir docs/chaos-release
 ```
 
-Docker services must be running. Tests use isolated databases/queues, mock models and synthetic recipients. CI runs lint, typechecks, unit tests, integration, build, a seeded chaos gate and Chromium browser tests. Failure/incomplete invariant evidence produces a nonzero exit. Use `pnpm dev:stop` to stop only the managed development processes; the project does not mount a Docker socket.
+Docker services must be running. Tests use isolated databases/queues, mock models and synthetic recipients. Policy integration tests prepare indexes and real authenticated users in a separate bounded setup hook; their assertions retain their original time limits. A timeout during setup and a policy assertion failure are reported separately. CI runs lint, typechecks, unit tests, integration, build, a seeded chaos gate and Chromium browser tests. Failure/incomplete invariant evidence produces a nonzero exit. Use `pnpm dev:stop` to stop only the managed development processes; the project does not mount a Docker socket.
 
 Release target: **v1.0.0**. Package version preparation is separate from creating a Git tag or publishing a GitHub release. See the [release checklist and actual verification status](docs/STEP-16.md); the user performs Git operations. No tag or remote CI success is implied by this README.
 
