@@ -27,7 +27,13 @@ test('global bell signals pending approvals and reminders, acknowledges attentio
   await page.route('**/api/backend/approvals', (route) =>
     route.fulfill({ json: items }),
   );
+  const initialPoll = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/backend/approvals' &&
+      response.status() === 200,
+  );
   await page.goto('/runs');
+  await initialPoll;
   const bell = page.getByRole('button', { name: /^Approval notifications,/ });
   await expect(bell).toHaveAccessibleName('Approval notifications, 0 pending');
   items = [approval];

@@ -33,3 +33,4 @@ export * from './time-travel';
 export * from './notifications';
 export * from './whatsapp';
 export * from './operations';
+export * from './release-demo';

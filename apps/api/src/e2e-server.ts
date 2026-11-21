@@ -41,6 +41,10 @@ const env = {
   WEB_PUBLIC_URL: 'http://127.0.0.1:3100',
   ORGMIND_RETRIEVER_ENABLED: 'false',
   CHAOS_ENABLED: 'false',
+  DEMO_ADMIN_EMAIL: 'step8@example.test',
+  DEMO_ADMIN_PASSWORD: 'step8-local-test-password',
+  DEMO_APPROVER_EMAIL: 'approver@example.test',
+  DEMO_APPROVER_PASSWORD: 'local-demo-approver-password',
   SEED_EMAIL: 'step8@example.test',
   SEED_PASSWORD: 'step8-local-test-password',
   SEED_NAME: 'Step 8 tester',
@@ -162,7 +166,7 @@ try {
   const seed = child([
     '--import',
     'tsx',
-    resolve(root, 'apps/api/src/scripts/seed.ts'),
+    resolve(root, 'apps/api/src/scripts/seed-demo.ts'),
   ]);
   await new Promise<void>((resolve, reject) => {
     seed.once('error', reject);

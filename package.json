@@ -1,6 +1,6 @@
 {
   "name": "unkillable-agent-workflows",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "author": "Jahid Khan Tuhin",
@@ -18,6 +18,8 @@
     "prepare": "node scripts/prepare.mjs",
     "db:migrate": "pnpm --filter @unkillable/api migrate",
     "seed": "pnpm --filter @unkillable/api seed",
+    "seed:demo": "tsx --env-file=.env apps/api/src/scripts/seed-demo.ts",
+    "demo:setup": "tsx scripts/setup-demo.ts",
     "test:integration": "tsx --env-file=.env scripts/test-integration.ts"
   },
   "dependencies": {},

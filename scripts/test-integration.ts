@@ -22,6 +22,7 @@ const result = spawnSync(
     'apps/api/src/policies.integration.test.ts',
     'apps/api/src/moderation.integration.test.ts',
     'apps/api/src/time-travel.integration.test.ts',
+    'apps/api/src/demo-seed.integration.test.ts',
     'apps/api/src/operations.integration.test.ts',
     'apps/api/src/whatsapp.integration.test.ts',
     'apps/api/src/notifications.integration.test.ts',

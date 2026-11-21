@@ -2,11 +2,14 @@ import { test, expect } from './fixtures';
 test('admin dry-runs and activates a policy, observes auto approval and analytics', async ({
   page,
 }) => {
+  const baseline = (
+    await (await page.request.get('/api/backend/policies')).json()
+  ).current;
   await page.goto('/runs');
   await expect(page).toHaveURL(/\/runs$/);
   await page.getByRole('link', { name: /Policies/ }).click();
   await expect(
-    page.getByText('Active version 0', { exact: false }),
+    page.getByText(`Active version ${baseline.version}`, { exact: false }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Load example rules' }).click();
   const notifications = page.getByRole('region', {
@@ -26,7 +29,7 @@ test('admin dry-runs and activates a policy, observes auto approval and analytic
     notifications.getByRole('status').filter({ hasText: 'Dry-run complete.' }),
   ).toBeVisible();
   await expect(
-    page.getByText('Active version 0', { exact: false }),
+    page.getByText(`Active version ${baseline.version}`, { exact: false }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Activate new version' }).click();
   await expect(
@@ -59,7 +62,11 @@ test('admin dry-runs and activates a policy, observes auto approval and analytic
     await expect(
       page.getByRole('heading', { name: 'Approval policy decision' }),
     ).toBeVisible();
-    await expect(page.getByText(/version 1 · auto approve/)).toBeVisible();
+    await expect(
+      page.getByText(
+        new RegExp(`version ${baseline.version + 1} · auto approve`),
+      ),
+    ).toBeVisible();
     await page.getByRole('link', { name: /Analytics/ }).click();
     await expect(
       page.getByRole('heading', { name: 'Approval analytics' }),
@@ -94,11 +101,7 @@ test('admin dry-runs and activates a policy, observes auto approval and analytic
       headers: { origin: 'http://127.0.0.1:3100' },
       data: {
         expectedVersion: body.current.version,
-        policy: {
-          name: 'Human review by default',
-          rules: [],
-          fallback: 'require_approval',
-        },
+        policy: baseline.policy,
       },
     });
     expect(reset.ok()).toBe(true);

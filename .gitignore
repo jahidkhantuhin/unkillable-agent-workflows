@@ -13,3 +13,4 @@ playwright-report/
 /docs/chaos-ci/
 /docs/chaos-diagnostics/
 /.local/moderation/
+/docs/chaos-release/

@@ -13,6 +13,7 @@ import {
   mailResultSchema,
   supportMailSchema,
   supportExamples,
+  ticketExampleSchema,
   ticketInputSchema,
   PermanentError,
   effectResultSchema,
@@ -22,6 +23,16 @@ import { ReliabilityRepository } from './reliability';
 import { RunRepository } from './index';
 type Stored = Document & { _id: string };
 export class SupportRepository {
+  async seedExample(input: unknown) {
+    const example = ticketExampleSchema.parse(input);
+    await this.db
+      .collection<Stored>('ticketExamples')
+      .updateOne(
+        { _id: example.id },
+        { $setOnInsert: { ...example, _id: example.id } },
+        { upsert: true },
+      );
+  }
   private readonly reliability;
   constructor(
     private readonly client: MongoClient,
