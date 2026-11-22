@@ -10,6 +10,12 @@ Durable agent workflows that pause for human approval, survive worker crashes an
 
 A TypeScript monorepo with two workflows: support-ticket refunds and asynchronous text moderation. Every demo uses **fake payments, synthetic `.test` customers and local Mailpit email**. MockLLM runs without API keys. Optional Gemini/Ollama, Telegram/WhatsApp and OrgMind adapters are separate opt-ins.
 
+## Product tour
+
+![Unkillable application overview](screenshots/unkillable-overview.gif)
+
+A 51-second tour of the real application using synthetic demo data. [Browse all 19 full-page screenshots](docs/SCREENSHOTS.md) for readable details, including long timelines and checkpoint views.
+
 ## Quickstart — four commands
 
 Prerequisites: Node.js 24+, pnpm 12.16.1, and Docker Desktop with its Linux engine running. Open a terminal in this checkout:

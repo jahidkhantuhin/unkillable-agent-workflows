@@ -516,3 +516,13 @@ The focused corrected policy suite passed **all 4 tests in 26.51 seconds**. The 
 No Git commands, commit, push, production code/configuration change, private .env modification, external service/model call or real payment/email side effect was performed. The browser/chaos suites were not rerun for this test-fixture-only follow-up.
 
 Final verification: the complete pre-push-equivalent sequence passed. `pnpm check` passed lint/format, every workspace typecheck, **133 unit/component tests** (75 integration cases intentionally skipped there) and production build; `pnpm test:integration` then passed **all 75 tests across 15 suites in 160.03 seconds**, including the policy suite under the unchanged two-worker integration runner. Final README/progress/test formatting checks passed. The user can commit this test/documentation fix and retry the push; remote GitHub Actions and the release remain user-managed.
+
+### Application overview media
+
+Captured all application routes and additional workflow states as 19 full-page PNGs, including public authentication screens, support and moderation, pending/successful run timelines, checkpoint inspection, Inbox, signed review, policy, analytics, notification settings, Dead Letters, chaos controls and the approval bell. Captures are 1440 pixels wide and retain each document's full height. The existing Workflows placeholder is shown as implemented; no application UI was changed.
+
+The isolated media Playwright job passed (1 test, 30.9 seconds total). Captures use synthetic accounts, MockLLM, fake payments and local Mailpit with external channels disabled. The harness cleaned up its owned test data. Private .env was unchanged. Docker Compose was started and left running; no Git commands were used.
+
+Built screenshots/unkillable-overview.gif: 35 frames, 1280 × 953 pixels, 51 seconds, 2,630,438 bytes. Verified source dimensions and decoded animation dimensions/frame count, inspected the screenshot contact sheet and a decoded GIF frame. README embeds the tour near the top and links docs/SCREENSHOTS.md for every full-resolution PNG and reproduction commands. Long pages use selected readable highlights in the GIF; full PNGs preserve the complete page. Formatting/lint verification follows below.
+
+Media follow-up verification: targeted ESLint passed for the capture configuration, Playwright capture and GIF builder; Prettier passed for the new/updated documentation, scripts and manifests. No application runtime logic or dependency lockfile was changed.

@@ -1,0 +1,221 @@
+{
+  "file": "screenshots/unkillable-overview.gif",
+  "width": 1280,
+  "height": 953,
+  "frames": 35,
+  "durationMs": 51000,
+  "bytes": 2630438,
+  "pages": 19,
+  "scenes": [
+    {
+      "chapter": 1,
+      "file": "01-home.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 1,
+      "file": "01-home.png",
+      "top": 226,
+      "delay": 1200
+    },
+    {
+      "chapter": 2,
+      "file": "02-login.png",
+      "top": 0,
+      "delay": 1800
+    },
+    {
+      "chapter": 3,
+      "file": "03-register.png",
+      "top": 0,
+      "delay": 1800
+    },
+    {
+      "chapter": 4,
+      "file": "04-runs.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 4,
+      "file": "04-runs.png",
+      "top": 709,
+      "delay": 1200
+    },
+    {
+      "chapter": 5,
+      "file": "05-new-ticket.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 5,
+      "file": "05-new-ticket.png",
+      "top": 184,
+      "delay": 1200
+    },
+    {
+      "chapter": 6,
+      "file": "06-workflows.png",
+      "top": 0,
+      "delay": 1800
+    },
+    {
+      "chapter": 7,
+      "file": "07-run-pending.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 7,
+      "file": "07-run-pending.png",
+      "top": 821,
+      "delay": 1200
+    },
+    {
+      "chapter": 7,
+      "file": "07-run-pending.png",
+      "top": 3030,
+      "delay": 1200
+    },
+    {
+      "chapter": 7,
+      "file": "07-run-pending.png",
+      "top": 6312,
+      "delay": 1200
+    },
+    {
+      "chapter": 8,
+      "file": "08-time-travel.png",
+      "top": 773,
+      "delay": 1600
+    },
+    {
+      "chapter": 8,
+      "file": "08-time-travel.png",
+      "top": 1665,
+      "delay": 1200
+    },
+    {
+      "chapter": 9,
+      "file": "09-approvals.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 9,
+      "file": "09-approvals.png",
+      "top": 1243,
+      "delay": 1200
+    },
+    {
+      "chapter": 10,
+      "file": "10-signed-review.png",
+      "top": 0,
+      "delay": 1800
+    },
+    {
+      "chapter": 11,
+      "file": "11-run-succeeded.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 11,
+      "file": "11-run-succeeded.png",
+      "top": 3522,
+      "delay": 1200
+    },
+    {
+      "chapter": 11,
+      "file": "11-run-succeeded.png",
+      "top": 5283,
+      "delay": 1200
+    },
+    {
+      "chapter": 11,
+      "file": "11-run-succeeded.png",
+      "top": 6877,
+      "delay": 1200
+    },
+    {
+      "chapter": 12,
+      "file": "12-moderation.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 12,
+      "file": "12-moderation.png",
+      "top": 546,
+      "delay": 1200
+    },
+    {
+      "chapter": 13,
+      "file": "13-moderation-run.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 13,
+      "file": "13-moderation-run.png",
+      "top": 3038,
+      "delay": 1200
+    },
+    {
+      "chapter": 14,
+      "file": "14-dead-letters.png",
+      "top": 0,
+      "delay": 1800
+    },
+    {
+      "chapter": 15,
+      "file": "15-policies.png",
+      "top": 0,
+      "delay": 1800
+    },
+    {
+      "chapter": 16,
+      "file": "16-analytics.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 16,
+      "file": "16-analytics.png",
+      "top": 485,
+      "delay": 1200
+    },
+    {
+      "chapter": 17,
+      "file": "17-notifications.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 17,
+      "file": "17-notifications.png",
+      "top": 277,
+      "delay": 1200
+    },
+    {
+      "chapter": 18,
+      "file": "18-chaos.png",
+      "top": 0,
+      "delay": 1600
+    },
+    {
+      "chapter": 18,
+      "file": "18-chaos.png",
+      "top": 291,
+      "delay": 1200
+    },
+    {
+      "chapter": 19,
+      "file": "19-approval-bell.png",
+      "top": 0,
+      "delay": 1800
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "synthetic": true,
+  "entries": [
+    {
+      "file": "01-home.png",
+      "title": "Welcome to Unkillable",
+      "route": "/",
+      "width": 1440,
+      "height": 1226
+    },
+    {
+      "file": "02-login.png",
+      "title": "Sign in",
+      "route": "/login",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "03-register.png",
+      "title": "Create an account",
+      "route": "/register",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "04-runs.png",
+      "title": "Runs · durable workflows at a glance",
+      "route": "/runs",
+      "width": 1440,
+      "height": 1709
+    },
+    {
+      "file": "05-new-ticket.png",
+      "title": "Start a support workflow",
+      "route": "/tickets/new",
+      "width": 1440,
+      "height": 1184
+    },
+    {
+      "file": "06-workflows.png",
+      "title": "Workflows · current catalog page",
+      "route": "/workflows",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "07-run-pending.png",
+      "title": "Live graph · paused for human approval",
+      "route": "/runs/:id (pending)",
+      "width": 1440,
+      "height": 7312,
+      "focus": [0, 0.13, 0.48, 1]
+    },
+    {
+      "file": "08-time-travel.png",
+      "title": "Checkpoint history · inspect and fork",
+      "route": "/runs/:id (checkpoint view)",
+      "width": 1440,
+      "height": 6948,
+      "focus": [0.13, 0.28]
+    },
+    {
+      "file": "09-approvals.png",
+      "title": "Approval Inbox · review before action",
+      "route": "/approvals",
+      "width": 1440,
+      "height": 2243
+    },
+    {
+      "file": "10-signed-review.png",
+      "title": "Personal signed review · explicit confirmation",
+      "route": "/approve",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "11-run-succeeded.png",
+      "title": "Completed run · one refund and one email",
+      "route": "/runs/:id (succeeded)",
+      "width": 1440,
+      "height": 9386,
+      "focus": [0, 0.42, 0.63, 0.82]
+    },
+    {
+      "file": "12-moderation.png",
+      "title": "Text moderation · publish or request review",
+      "route": "/moderation",
+      "width": 1440,
+      "height": 1546
+    },
+    {
+      "file": "13-moderation-run.png",
+      "title": "Moderation graph · reusable durable execution",
+      "route": "/runs/:id (moderation)",
+      "width": 1440,
+      "height": 6064,
+      "focus": [0, 0.6]
+    },
+    {
+      "file": "14-dead-letters.png",
+      "title": "Dead Letters · inspect, retry or discard",
+      "route": "/dead-letters",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "15-policies.png",
+      "title": "Versioned policy · mandatory money safety floor",
+      "route": "/policies",
+      "width": 1440,
+      "height": 1052
+    },
+    {
+      "file": "16-analytics.png",
+      "title": "Analytics · review feedback and workflow costs",
+      "route": "/analytics",
+      "width": 1440,
+      "height": 1485
+    },
+    {
+      "file": "17-notifications.png",
+      "title": "Channels · web-first approval notifications",
+      "route": "/notifications",
+      "width": 1440,
+      "height": 1277
+    },
+    {
+      "file": "18-chaos.png",
+      "title": "Chaos controls · guarded local failure injection",
+      "route": "/chaos",
+      "width": 1440,
+      "height": 1291
+    },
+    {
+      "file": "19-approval-bell.png",
+      "title": "Global alerts · review from any page",
+      "route": "/runs (notification dropdown)",
+      "width": 1440,
+      "height": 1709,
+      "focus": [0]
+    }
+  ]
+}
